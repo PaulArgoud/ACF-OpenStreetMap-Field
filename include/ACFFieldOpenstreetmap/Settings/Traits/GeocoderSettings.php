@@ -43,7 +43,7 @@ trait GeocoderSettings {
 					?>
 					<div class="card">
 						<h3>
-							<?php esc_html_ex( $geocoder['label'], 'geocoder', 'acf-openstreetmap-field' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText ?>
+							<?php esc_html_e( $geocoder['label'], 'acf-openstreetmap-field' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText ?>
 						</h3>
 						<table class="form-table" role="presentation">
 							<?php
