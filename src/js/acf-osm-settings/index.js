@@ -36,6 +36,12 @@ const initMap = {
 
 			layer.provider_key = provider_key;
 
+			// Reach the layer's min zoom before adding it: Leaflet would otherwise zoom there itself with an
+			// animation that ends after the layeradd handler below has centred the map on the layer
+			if ( layer.options.minZoom && map.getZoom() < layer.options.minZoom ) {
+				map.setZoom( layer.options.minZoom, { animate: false } );
+			}
+
 			if ( isOverlay( provider_key ) ) {
 
 				if ( currentOverlay ) {
@@ -74,10 +80,12 @@ const initMap = {
 				return;
 			}
 
+			// no animation: the zoom clamp below would run during it and leave the map elsewhere
 			if (!!layer.options.bounds) {
 				map.fitBounds( L.latLngBounds(layer.options.bounds), {
 					paddingTopLeft: [0, 0],
-					paddingBottomRight: [0, 0]
+					paddingBottomRight: [0, 0],
+					animate: false,
 				});
 			}
 
@@ -88,7 +96,7 @@ const initMap = {
 				Math.min( currentZoom, layer.options.maxZoom )
 			);
 
-			( currentZoom !== newZoom ) && map.setZoom( newZoom );
+			( currentZoom !== newZoom ) && map.setZoom( newZoom, { animate: false } );
 		});
 
 		new ResetLayers({

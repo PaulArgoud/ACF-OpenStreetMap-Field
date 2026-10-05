@@ -32,6 +32,8 @@ class Core extends Plugin {
 			add_action( 'admin_enqueue_scripts', [ $this, 'register_assets' ] );
 		}
 
+		add_action( 'enqueue_block_assets', [ $this, 'enqueue_editor_canvas_assets' ] );
+
 		$args = func_get_args();
 		parent::__construct( ...$args );
 	}
@@ -166,6 +168,8 @@ class Core extends Plugin {
 				'lng'			=> __( 'lng', 'acf-openstreetmap-field' ),
 				/* translators: short label for the zoom level input */
 				'zoom'			=> __( 'zoom', 'acf-openstreetmap-field' ),
+				/* translators: country name in marker labels from the French Géoplateforme geocoder */
+				'country_france'	=> __( 'France', 'acf-openstreetmap-field' ),
 				/**
 				 *	Filter the address formats used to build marker labels from
 				 *	geocoding results. Useful to reorder or localise the parts.
@@ -205,6 +209,9 @@ class Core extends Plugin {
 
 		wp_register_style( 'leaflet', $this->get_asset_url( 'assets/css/acf-osm-leaflet.css' ), [], $this->get_version() );
 
+		// block editor canvas
+		wp_register_style( 'acf-osm-editor-canvas', $this->get_asset_url( 'assets/css/acf-osm-editor-canvas.css' ), [], $this->get_version() );
+
 		/* backend */
 
 		// field js
@@ -215,11 +222,13 @@ class Core extends Plugin {
 		wp_localize_script( 'acf-input-osm', 'acf_osm', $osm_l10n );
 		wp_localize_script( 'acf-input-osm', 'acf_osm_admin', $osm_admin );
 		// field css
-		wp_register_style( 'acf-input-osm', $this->get_asset_url( 'assets/css/acf-input-osm.css' ), [ 'leaflet', 'acf-input', 'dashicons' ], $this->get_version() );
+		// with the canvas styles for block editors that are not iframed (WP < 7.1, ACF v2 blocks). In an iframed canvas WP
+		// doesn't copy them over again, the canvas already has a stylesheet with that id (enqueue_editor_canvas_assets())
+		wp_register_style( 'acf-input-osm', $this->get_asset_url( 'assets/css/acf-input-osm.css' ), [ 'leaflet', 'acf-input', 'dashicons', 'acf-osm-editor-canvas' ], $this->get_version() );
 
 
 		// field group admin js
-		wp_register_script( 'acf-field-group-osm', $this->get_asset_url('assets/js/acf-field-group-osm.js'), [ 'acf-osm-leaflet', 'acf-field-group' ], $this->get_version(), [
+		wp_register_script( 'acf-field-group-osm', $this->get_asset_url('assets/js/acf-field-group-osm.js'), [ 'acf-osm-leaflet', 'acf-field-group', 'wp-backbone' ], $this->get_version(), [
 			// 'strategy'  => 'defer',
 			'in_footer' => true,
 		] );
@@ -238,6 +247,37 @@ class Core extends Plugin {
 
 		// settings css
 		wp_register_style( 'acf-osm-settings', $this->get_asset_url( 'assets/css/acf-osm-settings.css' ), ['leaflet', 'acf-input-osm'], $this->get_version() );
+	}
+
+	/**
+	 *	Load the frontend map assets into the iframed block editor canvas (always iframed since WP 7.1),
+	 *	so maps in ACF block previews render.
+	 *
+	 *	@action enqueue_block_assets
+	 */
+	public function enqueue_editor_canvas_assets() {
+		// Only while WP collects the canvas iframe assets: _wp_get_iframed_editor_assets() filters
+		// should_load_block_editor_scripts_and_styles to false. Skips the frontend and the parent admin page.
+		if ( ! is_admin()
+			|| ! function_exists( 'wp_should_load_block_editor_scripts_and_styles' ) // WP < 5.6, no iframed canvas
+			|| wp_should_load_block_editor_scripts_and_styles()
+		) {
+			return;
+		}
+		// the canvas assets are collected before admin_enqueue_scripts
+		if ( ! wp_script_is( 'acf-osm-frontend', 'registered' ) ) {
+			$this->register_assets();
+		}
+		// Always: the field styles in the parent page depend on it, and WP copies a parent stylesheet with
+		// .wp-block rules into the canvas (with a warning) unless the canvas already has one with that id.
+		wp_enqueue_style( 'acf-osm-editor-canvas' );
+
+		// only ACF blocks can render a map in the canvas
+		if ( ! function_exists( 'acf_get_block_types' ) || ! acf_get_block_types() ) {
+			return;
+		}
+		wp_enqueue_script( 'acf-osm-frontend' );
+		wp_enqueue_style( 'leaflet' );
 	}
 
 	/**

@@ -1,4 +1,3 @@
-import {L} from 'leaflet/no-conflict';
 import { MapInput } from 'media/views';
 
 //  prevent map initialization in clone fields
@@ -43,32 +42,57 @@ acf.registerFieldType( acf.Field.extend({
 		return this.$el.closest('.acf-field-settings').find('input[name$="[return_format]"]');
 	},
 	initialize: function() {
-		const mapDiv = this.$map().get(0)
-		const osmLayers = Object.fromEntries( new Map(
-			Object.values( acf_osm_admin.options.osm_layers ).map( key => [ key, L.tileLayer.provider(key) ])
-		) )
+		// runs inside ACF's 'load' / 'append' action loop: an exception here would skip every
+		// handler queued after it (other fields, other plugins)
+		try {
+			let mapDiv = this.$map().get(0)
+			if ( ! mapDiv ) {
+				return
+			}
+			if ( ! MapInput.getByElement( mapDiv ) ) {
+				// ACF fires 'append' (field type changed, field duplicated) before osm-map.js's
+				// MutationObserver creates the preview map
+				if ( mapDiv.classList.contains('leaflet-container') ) { // clone of an initialized map
+					this.$('.acf-osm-above,.acf-osm-below,.acf-osm-position').remove()
+					const freshMapDiv = mapDiv.cloneNode( false )
+					freshMapDiv.setAttribute( 'class', 'leaflet-map' )
+					mapDiv.replaceWith( freshMapDiv )
+					mapDiv = freshMapDiv
+				}
+				// creates the map and its MapInput synchronously
+				mapDiv.dispatchEvent( new CustomEvent( 'acf-osm-map-added', { bubbles: true } ) )
+			}
 
-		this.editor = MapInput.getByElement(mapDiv)
-		this.leafletLayersControl = this.editor.layersControl;
-		this.osmLayersControl     = L.control.layers( osmLayers, [], {
-			collapsed: true,
-			hideSingleBase: true,
-		})
+			this.editor = MapInput.getByElement( mapDiv )
+			if ( ! this.editor ) {
+				return
+			}
 
-		this.bindListeners()
-		this.setMapLayers(true)
+			// ACF creates a new field instance each time the settings of a cached field type come back
+			// (OSM -> other type -> OSM): bind only once per map editor
+			if ( ! this.editor.fieldGroupListenersBound ) {
+				this.editor.fieldGroupListenersBound = true
+				this.bindListeners()
+			}
+			this.setMapLayers(true)
+		} catch ( err ) {
+			console.error( err )
+		}
 	},
 	setMapLnglat: function(e) {
-		this.editor.map.panTo(
-			{
-				lng: parseFloat( this.$lng().val() ),
-				lat: parseFloat( this.$lat().val() ),
-			},
-			{ animate: false, duration: 0 }
-		);
+		const lat = parseFloat( this.$lat().val() )
+		const lng = parseFloat( this.$lng().val() )
+		// skip incomplete input ('', '52.', …)
+		if ( ! Number.isFinite( lat ) || ! Number.isFinite( lng ) ) {
+			return
+		}
+		this.editor.map.panTo( { lat, lng }, { animate: false, duration: 0 } );
 	},
 	setMapZoom: function(e) {
-		this.editor.map.setZoom( parseInt( this.$zoom().val() ) )
+		const zoom = parseInt( this.$zoom().val(), 10 )
+		if ( Number.isFinite( zoom ) ) {
+			this.editor.map.setZoom( zoom )
+		}
 	},
 	setMapLayers: function() {
 		const isDirty = acf.unload.changed

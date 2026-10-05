@@ -33,7 +33,11 @@ class SettingsOpenStreetMap extends Settings {
 		add_option( 'acf_osm_geocoder', $this->geocoder_defaults, '', true );
 
 		add_option( 'acf_osm_provider_tokens', [], '', false );
-		add_option( 'acf_osm_providers', $this->get_default_option_providers(), '', false );
+		// Runs while plugins load, before 'init': only build the defaults (which reads the provider
+		// catalogue) when the option is missing, so nothing primes the provider cache this early.
+		if ( false === get_option( 'acf_osm_providers' ) ) {
+			add_option( 'acf_osm_providers', $this->get_default_option_providers(), '', false );
+		}
 		add_option( 'acf_osm_proxy', [], '', false );
 
 		add_action( 'admin_menu', [ $this, 'admin_menu' ] );
@@ -74,12 +78,14 @@ class SettingsOpenStreetMap extends Settings {
 			return;
 		}
 
-		$snippet = "location ^~ /wp-content/maps/ {\n\ttry_files \$uri /wp-content/maps/index.php;\n}";
+		// every request in /wp-content/maps/ goes to its index.php, which the site's PHP location then runs
+		$snippet = "location /wp-content/maps/ {\n\trewrite ^ /wp-content/maps/index.php last;\n}";
 		?>
 		<div class="notice notice-warning">
 			<p><strong><?php esc_html_e( 'ACF OpenStreetMap Field — Map Proxy', 'acf-openstreetmap-field' ); ?></strong></p>
 			<p><?php esc_html_e( 'The map proxy relies on an .htaccess rewrite, which your web server (Nginx or similar) does not use. Add the following to your server configuration so proxied tiles are served:', 'acf-openstreetmap-field' ); ?></p>
 			<pre><code><?php echo esc_html( $snippet ); ?></code></pre>
+			<p><?php esc_html_e( 'It relies on the usual PHP location of WordPress (location ~ \.php$). Do not add “^~” to it, and replace the rule suggested by versions 1.7.1 and 1.7.2 (location ^~ /wp-content/maps/ { try_files … }): it serves the directory as static files.', 'acf-openstreetmap-field' ); ?></p>
 		</div>
 		<?php
 	}

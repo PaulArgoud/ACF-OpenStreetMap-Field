@@ -43,7 +43,7 @@ trait GeocoderSettings {
 					?>
 					<div class="card">
 						<h3>
-							<?php esc_html_ex( $geocoder['label'], 'geocoder', 'acf-openstreetmap-field' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText ?>
+							<?php echo esc_html_x( $geocoder['label'], 'geocoder', 'acf-openstreetmap-field' ); // phpcs:ignore WordPress.WP.I18n.NonSingularStringLiteralText ?>
 						</h3>
 						<table class="form-table" role="presentation">
 							<?php
@@ -137,7 +137,7 @@ trait GeocoderSettings {
 							// TODO: choose UI by $setting['type']
 							printf(
 								'<input class="regular-text code" type="text" name="%1$s" value="%2$s" />',
-								'acf_osm_geocoder[opencage][apiKey]',
+								esc_attr( sprintf( 'acf_osm_geocoder[%s][%s]', $slug, $prop ) ),
 								esc_attr( $value )
 							);
 						},
@@ -213,10 +213,11 @@ trait GeocoderSettings {
 	public function sanitize_geocoder( $new_values ) {
 
 		// make sure defaults are present
-		$values  = array_replace_recursive( $this->geocoder_defaults, $new_values );
+		$new_values = (array) $new_values;
+		$values     = array_replace_recursive( $this->geocoder_defaults, $new_values );
 
 		// make sure geocoder exists
-		if ( ! in_array( $new_values['engine'], Core\LeafletGeocoders::GEOCODERS ) ) {
+		if ( ! in_array( $new_values['engine'] ?? '', Core\LeafletGeocoders::GEOCODERS ) ) {
 			$values['engine'] = Core\LeafletGeocoders::GEOCODER_DEFAULT;
 		}
 
@@ -224,7 +225,14 @@ trait GeocoderSettings {
 			$values['scale'] = $this->geocoder_defaults['scale'];
 		}
 
-		$values['opencage']['apiKey'] = sanitize_text_field( $values['opencage']['apiKey'] );
+		// geocoder credentials (e.g. Photon, OpenCage API keys)
+		foreach ( Core\LeafletGeocoders::instance()->get_geocoders() as $slug => $geocoder ) {
+			foreach ( array_keys( $geocoder['settings'] ?? [] ) as $prop ) {
+				if ( isset( $values[ $slug ][ $prop ] ) ) {
+					$values[ $slug ][ $prop ] = sanitize_text_field( $values[ $slug ][ $prop ] );
+				}
+			}
+		}
 
 		return $values;
 

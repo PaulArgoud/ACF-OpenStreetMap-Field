@@ -124,10 +124,25 @@ class MapInput extends Backbone.View {
 			this.model.set('zoom',this.map.getZoom());
 		});
 		this.map.on('moveend', () => {
-			var latlng = this.map.getCenter();
+			const latlng = this.map.getCenter();
+			const lat    = this.model.get('lat');
+			const lng    = this.model.get('lng');
 
-			this.model.set('lat',latlng.lat );
-			this.model.set('lng',latlng.lng );
+			// Layout changes move the center without user interaction: setView() snaps the map to
+			// whole pixels and invalidateSize() re-centers to the nearest pixel when the container
+			// resizes (e.g. a scrollbar showing up while the block editor saves meta boxes). Each
+			// adds up to half a pixel per axis. Writing that drift back would flag the post as
+			// changed, so ignore moves below 1.5px. Compare unrounded projections: container
+			// points are rounded to whole pixels and would turn a half-pixel drift into 1px.
+			if ( isFinite( lat ) && isFinite( lng ) ) {
+				const stored = this.map.project( [ lat, lng ] );
+				const center = this.map.project( latlng );
+				if ( Math.abs( stored.x - center.x ) < 1.5 && Math.abs( stored.y - center.y ) < 1.5 ) {
+					return;
+				}
+			}
+
+			this.model.set( { lat: latlng.lat, lng: latlng.lng } );
 		});
 
 		//
@@ -181,6 +196,9 @@ class MapInput extends Backbone.View {
 		$lat.add( $lng ).on( 'change', () => {
 			const lat = parseFloat( $lat.val() ), lng = parseFloat( $lng.val() )
 			if ( ! isNaN( lat ) && ! isNaN( lng ) ) {
+				// store the typed position as is: the map can only center on whole pixels
+				// and ignores moves below 1.5px (see moveend)
+				this.model.set( { lat, lng } )
 				this.map.panTo( [ lat, lng ] )
 			}
 		} )
@@ -265,7 +283,14 @@ class MapInput extends Backbone.View {
 	}
 
 	updateValue() {
-		this.$value.val( JSON.stringify( this.model.toJSON() ) ).trigger('change');
+		// no literal < > & (like render_field() in PHP): ACF runs posted values through wp_kses for
+		// users without unfiltered_html, which would break the JSON
+		const value = JSON.stringify( this.model.toJSON() )
+			.replace( /[<>&]/g, c => '\\u' + c.charCodeAt( 0 ).toString( 16 ).padStart( 4, '0' ) );
+		// ACF flags the post as changed on every `change` event, so only fire it on a real change
+		if ( value !== this.$value.val() ) {
+			this.$value.val( value ).trigger('change');
+		}
 		//this.$el.trigger('change')
 		this.updateMarkerState();
 	}
@@ -435,7 +460,6 @@ class MapInput extends Backbone.View {
 
 	addMarkerByLatLng(latlng) {
 		// no more markers
-		console.log('can',this.canAddMarker)
 		if ( ! this.canAddMarker ) {
 			return;
 		}
@@ -535,8 +559,9 @@ class MapInput extends Backbone.View {
 			.addTo( this.map );
 
 		// Issue #87 - <button>This is not a button</button>
+		const iconButton = this.geocoder.getContainer().querySelector('.leaflet-control-geocoder-icon')
 		L.DomEvent.on(
-			this.geocoder.getContainer().querySelector('.leaflet-control-geocoder-icon'),
+			iconButton,
 			'click',
 			function() {
 				if (this._selection) {
@@ -551,14 +576,22 @@ class MapInput extends Backbone.View {
 			},
 			this.geocoder
 		)
+		// The geocoder control also searches on touchstart (or click) on its container. Leaflet 1.9 reports
+		// touch support wherever pointer events exist, so one tap would send two search requests.
+		L.DomEvent.on( iconButton, 'touchstart click', L.DomEvent.stopPropagation )
 	}
 
 	reverseGeocode( model ) {
 
+		// the detail level is a geocoder setting (acf_osm_admin.options.geocoder_options), not a control option
 		const latlng = { lat: model.get('lat'), lng: model.get('lng') },
-			zoom = 'auto' === this.geocoder.options.scale
-				? mapZoomLevel( this.map.getZoom() )
-				: parseInt( this.geocoder.options.scale );
+			scale  = this.geocoder.options.scale ?? options.geocoder_options?.scale ?? '18';
+		let zoom = 'auto' === scale
+			? mapZoomLevel( this.map.getZoom() )
+			: parseInt( scale, 10 );
+		if ( ! Number.isFinite( zoom ) ) {
+			zoom = 18;
+		}
 
 		this.geocoder.options.geocoder.reverse( latlng, this.map.options.crs.scale( zoom ) ).then(
 			geocode => {
@@ -573,8 +606,6 @@ class MapInput extends Backbone.View {
 	}
 
 	parseGeocodeResult( results, latlng ) {
-
-console.debug('parseGeocodeResult', results);
 
 		var label = false;
 
@@ -633,11 +664,12 @@ console.debug('parseGeocodeResult', results);
 		}
 
 		activeLayers
-			.sort( (a,b) => a.overlay )
+			.sort( (a,b) => a.overlay - b.overlay ) // overlays on top
 			.forEach( layer => layer.addTo( this.map ) )
+		this.syncMaxZoom()
 
 		// update model
-		this.map.on( 'baselayerchange layeradd layerremove', e => {
+		this._onLayersChanged = e => {
 
 			if ( ! e.layer.providerKey ) {
 				return;
@@ -656,12 +688,30 @@ console.debug('parseGeocodeResult', results);
 				}
 			});
 			this.model.set( 'layers', layers );
-		} );
+			this.syncMaxZoom()
+		};
+		this.map.on( 'baselayerchange layeradd layerremove', this._onLayersChanged );
 
 		this.layersControl = L.control.layers( baseLayers, overlays, {
 			collapsed: true,
 			hideSingleBase: true,
 		}).addTo(this.map);
+	}
+
+	/**
+	 *	Cap the zoom like the front end does (osm-map.js createLayers): at the lowest maxZoom of the map's
+	 *	layers. Leaflet itself allows the highest one, where the other layers are gone.
+	 */
+	syncMaxZoom() {
+		let maxZoom = Infinity
+		this.map.eachLayer( layer => {
+			if ( layer.providerKey && layer.options.maxZoom ) {
+				maxZoom = Math.min( maxZoom, layer.options.maxZoom )
+			}
+		} )
+		if ( isFinite( maxZoom ) ) {
+			this.map.setMaxZoom( maxZoom )
+		}
 	}
 
 	resetLayers() {
@@ -671,7 +721,12 @@ console.debug('parseGeocodeResult', results);
 				layer.remove();
 			}
 		})
-		this.map.off('baselayerchange layeradd layerremove')
+		// only remove our own listener: without a handler off() would also drop Leaflet's,
+		// e.g. the attribution control's layeradd listener (Leaflet 1.8+)
+		if ( this._onLayersChanged ) {
+			this.map.off( 'baselayerchange layeradd layerremove', this._onLayersChanged )
+			this._onLayersChanged = null
+		}
 		// remove layer control
 		!! this.layersControl && this.layersControl.remove()
 	}

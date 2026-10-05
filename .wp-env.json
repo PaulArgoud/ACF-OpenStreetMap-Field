@@ -1,6 +1,6 @@
 {
   "phpVersion": "8.5",
-  "core": "WordPress/WordPress#7.0",
+  "core": "WordPress/WordPress#7.1.2",
   "plugins": [ ".","https://downloads.wordpress.org/plugin/secure-custom-fields.zip" ],
   "env": {
     "tests": {

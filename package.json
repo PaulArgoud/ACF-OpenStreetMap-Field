@@ -13,7 +13,7 @@
     "build:js": "rm -rf assets/js/ && webpack build --output-path ./assets/js --config ./webpack.config.js --mode production",
     "build:lint": "node ./src/run/lint.js",
     "build:i18n": "npm-run-all --serial build:i18n:json build:i18n:pot",
-    "build:i18n:pot": "php -d memory_limit=1G $(which wp) i18n make-pot . languages/acf-openstreetmap-field.pot --domain=acf-openstreetmap-field --exclude=tmp --exclude=vendor --exclude=test --exclude=tests",
+    "build:i18n:pot": "php -d memory_limit=1G $(which wp) i18n make-pot . languages/acf-openstreetmap-field.pot --domain=acf-openstreetmap-field --exclude=tmp --exclude=vendor --exclude=test --exclude=tests --headers='{\"Report-Msgid-Bugs-To\":\"https://github.com/PaulArgoud/ACF-OpenStreetMap-Field/issues\"}'",
     "build:i18n:json": "node ./src/run/i18n-json-strings.js",
     "uitest": "echo \"Running UI Tests. Press ^C to stop\" && node --watch ./src/run/test.js start && node ./src/run/test.js stop",
     "test": "npm-run-all --serial test:legacy test:edge",
@@ -23,7 +23,7 @@
     "dev-test": "./src/run/dev-test.sh",
     "dashicons": "node ./src/run/dashicons.js",
     "providers": "node ./src/run/providers.js",
-    "i18n": "wp i18n make-pot . languages/acf-openstreetmap-field.pot --domain=acf-openstreetmap-field --exclude=tmp/*",
+    "i18n": "wp i18n make-pot . languages/acf-openstreetmap-field.pot --domain=acf-openstreetmap-field --exclude=tmp/* --headers='{\"Report-Msgid-Bugs-To\":\"https://github.com/PaulArgoud/ACF-OpenStreetMap-Field/issues\"}'",
     "rollback": "git reset --hard HEAD~ && git push origin +master",
     "postinstall": "composer install",
     "audit": "./vendor/squizlabs/php_codesniffer/bin/phpcs . --report=code --standard=./phpcs.ruleset.xml -n -s > ./phpcs-report.txt || exit 0",
@@ -31,18 +31,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mcguffin/acf-openstreetmap-field.git"
+    "url": "git+https://github.com/PaulArgoud/ACF-OpenStreetMap-Field.git"
   },
   "author": "Jörn Lund",
   "license": "GPL-3.0-or-later",
   "bugs": {
-    "url": "https://github.com/mcguffin/acf-openstreetmap-field/issues"
+    "url": "https://github.com/PaulArgoud/ACF-OpenStreetMap-Field/issues"
   },
   "browserslist": [
     "last 3 versions",
     "> 0.125%"
   ],
-  "homepage": "https://github.com/mcguffin/acf-openstreetmap-field#readme",
+  "homepage": "https://github.com/PaulArgoud/ACF-OpenStreetMap-Field#readme",
   "devDependencies": {
     "@wordpress/env": "^10.14.0",
     "colors": "^1.4.0",
@@ -81,7 +81,7 @@
     },
     "git": {
       "host": "github.com",
-      "user": "mcguffin"
+      "user": "PaulArgoud"
     },
     "wporg": {
       "assets": ".wporg",

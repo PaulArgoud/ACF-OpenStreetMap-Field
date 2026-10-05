@@ -41,12 +41,6 @@
 		display: none;
 	}
 }
-.acf-block-preview {
-	iframe[src*="openstreetmap.org"] {
-		pointer-events: none;
-	}
-}
-
 .acf-field-open-street-map {
 	.acf-osm-map {
 		width: 100%;
@@ -256,32 +250,11 @@
 	}
 }
 
-$leaflet-panes: (
-	// original
-	leaflet-pane:400,
-	leaflet-tile-pane: 200,
-	leaflet-shadow-pane: 500,
-	leaflet-overlay-pane: 400,
-	leaflet-marker-pane: 600,
-	leaflet-tooltip-pane: 650,
-	leaflet-popup-pane: 700,
-);
-
-.wp-block {
-	@each $pane,$zindex in $leaflet-panes {
-
-		.#{$pane} {
-			z-index: math.div( $zindex, 10);
-		}
-	}
-}
-
-// block editor fixes
+// block editor fixes (block canvas: see acf-osm-editor-canvas.scss)
 .leaflet-pane {
 	.acf-osm-settings-wrap &,
 	.postbox &,
-	.components-panel &, // block editor
-	.wp-block & {
+	.components-panel & { // block editor
 		z-index: 30;
 	}
 
@@ -297,12 +270,6 @@ $leaflet-panes: (
 									supported by Chrome, Opera and Firefox */
 	}
 }
-.leaflet-control-layers {
-	.wp-block & {
-		text-align: left;
-	}
-}
-
 .leaflet-control-layers-scrollbar {
 	overscroll-behavior: contain;
 }
@@ -427,5 +394,15 @@ $leaflet-panes: (
 
 	input[type="number"] {
 		width: 7em;
+	}
+}
+
+// Block editor: the map controls stack above WP's overlay while meta boxes save.
+// A change made then would not be saved and would leave the post with unsaved changes.
+// The whole subtree: Leaflet sets pointer-events: auto on its controls and markers.
+.edit-post-meta-boxes-area.is-loading .acf-field-open-street-map {
+	&,
+	* {
+		pointer-events: none;
 	}
 }

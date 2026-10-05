@@ -29,6 +29,11 @@ class MapProxy extends \WP_CLI_Command {
 	public function install( $args, $assoc_args ) {
 		$force  = (bool) Utils\get_flag_value( $assoc_args, 'force', false );
 		$proxy  = Core\MapProxy::instance();
+
+		// plugin updated without an admin visit since: migrate every site first, as the new index.php
+		// no longer reads the configs of older versions
+		Core\Core::instance()->maybe_upgrade();
+
 		$result = $proxy->setup_proxy_dir( $force );
 
 		if ( is_wp_error( $result ) ) {
@@ -76,20 +81,18 @@ class MapProxy extends \WP_CLI_Command {
 	 *     wp acf-osm map-proxy configure
 	 */
 	public function configure( $args, $assoc_args ) {
-		$proxy      = Core\MapProxy::instance();
-		$upload_dir = wp_upload_dir( null, false );
-
-		if ( ! empty( $upload_dir['error'] ) ) {
-			\WP_CLI::error( $upload_dir['error'] );
-		}
-
-		$result = $proxy->save_proxy_config( $upload_dir['basedir'] );
+		$proxy  = Core\MapProxy::instance();
+		$result = $proxy->setup_proxies(); // also replaces an outdated proxy directory
 
 		if ( is_wp_error( $result ) ) {
 			\WP_CLI::error( $result->get_error_message() );
 		}
 
-		\WP_CLI::success( sprintf( 'Created proxy config in %s', $upload_dir['basedir'] ) );
+		if ( file_exists( $proxy->get_config_file() ) ) {
+			\WP_CLI::success( sprintf( 'Saved proxy config %s', $proxy->get_config_file() ) );
+		} else {
+			\WP_CLI::success( 'No provider is proxied: there is no proxy config.' );
+		}
 	}
 
 	/**

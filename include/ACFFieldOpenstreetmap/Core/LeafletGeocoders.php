@@ -8,8 +8,9 @@ class LeafletGeocoders extends Singleton {
 	const GEOCODER_NOMINATIM = 'nominatim';
 	const GEOCODER_PHOTON = 'photon';
 	const GEOCODER_OPENCAGE = 'opencage';
+	const GEOCODER_GEOPLATEFORME = 'geoplateforme'; // French addresses (IGN Géoplateforme), no API key
 	const GEOCODER_DEFAULT = self::GEOCODER_NOMINATIM;
-	const GEOCODERS = [self::GEOCODER_NOMINATIM, self::GEOCODER_PHOTON, self::GEOCODER_OPENCAGE];
+	const GEOCODERS = [self::GEOCODER_NOMINATIM, self::GEOCODER_PHOTON, self::GEOCODER_OPENCAGE, self::GEOCODER_GEOPLATEFORME];
 
 	/** @var array */
 	private $geocoders = null;

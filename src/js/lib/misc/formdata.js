@@ -5,7 +5,7 @@ const formToObject = form => {
 	const object = {}
 	const formData = new FormData(form)
 
-	formData.entries().forEach( ([key,value]) => {
+	Array.from( formData.entries() ).forEach( ([key,value]) => {
 		const parts = splitKey(key)
 		let current = object, previous, previousPart
 		parts.map( (part,i) => {
@@ -13,7 +13,6 @@ const formToObject = form => {
 			if ( i === parts.length - 1 ) {
 				if ( '' === part ) {
 					if ( Array !== current.constructor ) {
-						console.log(Array !== current.constructor)
 						previous[previousPart] = []
 					}
 					previous[previousPart].push(value)

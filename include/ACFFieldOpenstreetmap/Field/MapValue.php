@@ -88,7 +88,7 @@ class MapValue {
 
 		if ( is_string( $value ) ) {
 			// try to json-decode
-			$value = json_decode( $value );
+			$value = json_decode( $value, true );
 			if ( is_null( $value ) ) {
 				$value = [];
 			}
@@ -103,8 +103,13 @@ class MapValue {
 			$value['markers'] = [];
 		}
 
-		// make sure its an indexed array
-		$value['markers'] = array_values( $value['markers'] );
+		// make sure its an indexed array of arrays (markers may come in as objects, e.g. from an object value)
+		$value['markers'] = array_values( array_filter(
+			array_map( function( $marker ) {
+				return is_object( $marker ) ? (array) $marker : $marker;
+			}, $value['markers'] ),
+			'is_array'
+		) );
 
 		// Maybe get marker from ACF GoogleMaps data
 		if ( 'display' === $context ) { // display + edit

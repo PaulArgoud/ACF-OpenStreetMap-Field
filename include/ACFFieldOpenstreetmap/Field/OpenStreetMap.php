@@ -37,10 +37,18 @@ class OpenStreetMap extends \acf_field {
 
 
 		$this->show_in_rest = true;
+
+		// format_value() output comes from templates that escape it themselves (esc_url, acf_esc_attr, …).
+		// Without this, ACF 6.2.5+ runs the_field() output through wp_kses and strips the iFrame format's <iframe>.
+		if ( property_exists( $this, 'supports' ) ) {
+			$this->supports = array_merge( (array) $this->supports, [ 'escaping_html' => true ] );
+		}
+
 		/*
-		 *  category (string) basic | content | choice | relational | jquery | layout | CUSTOM GROUP NAME
+		 *  category (string) basic | content | choice | relational | advanced | layout | CUSTOM GROUP NAME
+		 *  ACF 6.1 replaced the 'jquery' category by 'advanced'
 		 */
-		$this->category = 'jquery';
+		$this->category = version_compare( acf_get_setting( 'version' ), '6.1', '>=' ) ? 'advanced' : 'jquery';
 
 		$this->default_values = [
 			// hamburg
@@ -104,11 +112,12 @@ class OpenStreetMap extends \acf_field {
 			$field['value'] = $this->sanitize_value( [], $field, 'display' );
 		}
 
-		// json_encoded value
+		// json_encoded value. No literal < > & so ACF's wp_kses_post_deep() on $_POST for users
+		// without unfiltered_html can't mangle the JSON (see MapInput.updateValue())
 		acf_hidden_input([
 			'id'		=> $field['id'],
 			'name'		=> $field['name'],
-			'value'		=> json_encode( $field['value'] ),
+			'value'		=> json_encode( $field['value'], JSON_HEX_TAG | JSON_HEX_AMP ),
 			'class'		=> 'osm-json',
 		]);
 
@@ -291,9 +300,7 @@ class OpenStreetMap extends \acf_field {
 		// normalize markers
 
 
-		if ( is_string( $value ) ) {
-			$value = json_decode( stripslashes($value), true );
-		}
+		$value = $this->decode_json_value( $value );
 
 		if ( ! is_array( $value ) ) {
 			$value = $this->defaults;
@@ -319,10 +326,11 @@ class OpenStreetMap extends \acf_field {
 	 *  @param	$value (mixed) the value which was loaded from the database
 	 *  @param	$post_id (mixed) the $post_id from which the value was loaded
 	 *  @param	$field (array) the field array holding all the field options
+	 *  @param	$escape_html (bool) whether ACF expects escaped output (ACF 6.2.5+)
 	 *
 	 *  @return	$value (mixed) the modified value
 	 */
-	function format_value( $value, $post_id, $field ) {
+	function format_value( $value, $post_id, $field, $escape_html = false ) {
 
 		// bail early if no value
 		if ( empty( $value ) ) {
@@ -336,6 +344,13 @@ class OpenStreetMap extends \acf_field {
 			// ensure backwards compatibility <= 1.0.1
 			$value['center_lat'] = $value['lat'];
 			$value['center_lng'] = $value['lng'];
+
+			// the field declares escaping_html for its HTML formats, so ACF leaves the raw array to us
+			if ( $escape_html ) {
+				$value = map_deep( $value, function( $item ) {
+					return is_string( $item ) ? acf_esc_html( $item ) : $item;
+				} );
+			}
 
 		} else {
 
@@ -375,6 +390,69 @@ class OpenStreetMap extends \acf_field {
 		return acf_format_numerics( $value );
 	}
 
+	/**
+	 * REST API schema. The field reads as an object, so it must accept one on write too.
+	 * A JSON string is still accepted for backwards compatibility.
+	 *
+	 * @param array $field
+	 * @return array
+	 */
+	public function get_rest_schema( array $field ) {
+
+		$number = [ 'type' => [ 'number', 'string' ] ];
+
+		return [
+			'type'       => [ 'object', 'string', 'null' ],
+			'required'   => ! empty( $field['required'] ),
+			'properties' => [
+				'lat'     => $number,
+				'lng'     => $number,
+				'zoom'    => [ 'type' => [ 'integer', 'string' ] ],
+				'layers'  => [
+					'type'  => 'array',
+					'items' => [ 'type' => 'string' ],
+				],
+				'markers' => [
+					'type'  => 'array',
+					'items' => [
+						'type'       => 'object',
+						'properties' => [
+							'label'         => [ 'type' => 'string' ],
+							'default_label' => [ 'type' => 'string' ],
+							'lat'           => $number,
+							'lng'           => $number,
+						],
+					],
+				],
+				'address' => [ 'type' => [ 'string', 'number' ] ],
+				'version' => [ 'type' => [ 'string', 'number' ] ],
+			],
+		];
+	}
+
+	/**
+	 *	Decode a JSON field value in any shape ACF hands over: unslashed JSON (REST API, ACF Blocks),
+	 *	slashed JSON (classic $_POST) or an already decoded array (block validation on load).
+	 *
+	 *	@param mixed $value
+	 *	@return mixed Decoded array, or $value if it isn't a string
+	 */
+	private function decode_json_value( $value ) {
+
+		if ( ! is_string( $value ) ) {
+			return $value;
+		}
+
+		$decoded = json_decode( $value, true );
+
+		if ( ! is_array( $decoded ) ) {
+			// slashed JSON objects are never valid JSON
+			$decoded = json_decode( wp_unslash( $value ), true );
+		}
+
+		return $decoded;
+	}
+
 
 	//*/
 
@@ -398,16 +476,16 @@ class OpenStreetMap extends \acf_field {
 	 */
 	function validate_value( $valid, $value, $field, $input ){
 
-		// bail early if not required
-		if( ! $field['required'] || $field['max_markers'] === 0 ) {
+		// bail early if not required or no markers allowed
+		if( ! $field['required'] || ( '' !== $field['max_markers'] && 0 === intval( $field['max_markers'] ) ) ) {
 
 			return $valid;
 
 		}
 
-		$value = json_decode( stripslashes( $value ), true );
+		$value = $this->decode_json_value( $value );
 
-		if ( ! count( $value['markers'] ) ) {
+		if ( ! is_array( $value ) || empty( $value['markers'] ) || ! is_array( $value['markers'] ) ) {
 
 			return __('Please set a marker on the map.','acf-openstreetmap-field');
 

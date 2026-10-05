@@ -29,5 +29,11 @@
                 "required": true
             }
         }
+    },
+    "geoplateforme": {
+        "label": "Géoplateforme (IGN, France)",
+        "options": {
+            "serviceUrl": "https://data.geopf.fr/geocodage/"
+        }
     }
 }

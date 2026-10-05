@@ -31,7 +31,8 @@ function acf_osm_uninstall_site( $options ) {
 		delete_option( $option );
 	}
 
-	// Remove the generated proxy directory (wp-content/maps/).
+	// Remove the generated proxy directory (wp-content/maps/, with the proxy configs) and the
+	// configs older versions wrote to uploads/.
 	if ( ! function_exists( 'WP_Filesystem' ) ) {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 	}
@@ -41,7 +42,20 @@ function acf_osm_uninstall_site( $options ) {
 		if ( $wp_filesystem->is_dir( $proxy_dir ) ) {
 			$wp_filesystem->delete( $proxy_dir, true );
 		}
+		$upload_dir = wp_upload_dir( null, false );
+		foreach ( [ 'acf-osm-proxy-config.json', 'acf-osm-proxy-config.php' ] as $legacy_config ) {
+			$legacy_config = trailingslashit( $upload_dir['basedir'] ) . $legacy_config;
+			if ( $wp_filesystem->exists( $legacy_config ) ) {
+				$wp_filesystem->delete( $legacy_config );
+			}
+		}
 	}
+}
+
+// Proxy configs in wp-content/ (acf-osm-proxy-config.php, multisite: acf-osm-proxy-config-<id>.php), of every
+// site, also of sites deleted before. They hold access tokens.
+foreach ( (array) glob( trailingslashit( WP_CONTENT_DIR ) . 'acf-osm-proxy-*.php' ) as $acf_osm_proxy_config ) {
+	wp_delete_file( $acf_osm_proxy_config );
 }
 
 if ( is_multisite() ) {

@@ -1,0 +1,43 @@
+@use "sass:math";
+
+// Maps inside the block editor canvas, an iframe since WP 7.1.
+// Loaded there by Core::enqueue_editor_canvas_assets(): WP no longer copies admin styles
+// with .wp-block selectors into the canvas without a warning.
+
+.acf-block-preview {
+	iframe[src*="openstreetmap.org"] {
+		pointer-events: none;
+	}
+}
+
+$leaflet-panes: (
+	// original
+	leaflet-pane:400,
+	leaflet-tile-pane: 200,
+	leaflet-shadow-pane: 500,
+	leaflet-overlay-pane: 400,
+	leaflet-marker-pane: 600,
+	leaflet-tooltip-pane: 650,
+	leaflet-popup-pane: 700,
+);
+
+.wp-block {
+	@each $pane,$zindex in $leaflet-panes {
+
+		.#{$pane} {
+			z-index: math.div( $zindex, 10);
+		}
+	}
+}
+
+.leaflet-pane {
+	.wp-block & {
+		z-index: 30;
+	}
+}
+
+.leaflet-control-layers {
+	.wp-block & {
+		text-align: left;
+	}
+}

@@ -1,5 +1,5 @@
 {
-  "name": "mcguffin/acf-openstreetmap-field",
+  "name": "paulargoud/acf-openstreetmap-field",
   "description": "WordPress ACF Field for OpenStreetMap",
   "license": "GPL-3.0-or-later",
   "keywords": [
@@ -9,7 +9,7 @@
     "OpenStreetMap",
     "Leaflet"
   ],
-  "homepage": "https://github.com/mcguffin/acf-openstreetmap-field",
+  "homepage": "https://github.com/PaulArgoud/ACF-OpenStreetMap-Field",
   "type": "wordpress-plugin",
   "autoload": {
     "psr-4": {

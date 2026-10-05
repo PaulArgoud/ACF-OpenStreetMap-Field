@@ -46,7 +46,10 @@ class LeafletProviders extends Singleton {
 			get_option( 'acf_osm_providers', [] ),
 			get_option( 'acf_osm_proxy', [] ),
 		] ) );
-		if ( isset( $this->providers_cache[ $cache_key ] ) ) {
+		// Only memoize once the theme and other plugins had a chance to hook the provider filters
+		// (acf_osm_leaflet_providers, the map proxy on init, …): a result cached earlier would ignore them.
+		$memoize = did_action( 'wp_loaded' ) > 0;
+		if ( $memoize && isset( $this->providers_cache[ $cache_key ] ) ) {
 			return $this->providers_cache[ $cache_key ];
 		}
 
@@ -67,7 +70,18 @@ class LeafletProviders extends Singleton {
 				// Legacy configs may hold entries for removed providers (e.g. a bare
 				// `HERE` app_id/app_key) which would otherwise be injected as malformed
 				// providers (missing `options`/`url`) and break map rendering. See #133.
-				$tokens = array_intersect_key( $tokens, $providers );
+				$tokens = array_intersect_key( (array) $tokens, $providers );
+
+				// Only the access token options (see ProviderSettings::sanitize_provider_tokens()), also
+				// for tokens saved by older versions: nothing else of the catalogue (the tile url, …) is replaced.
+				foreach ( $tokens as $provider_key => $token ) {
+					$tokens[ $provider_key ] = [
+						'options' => array_intersect_key(
+							(array) ( $token['options'] ?? [] ),
+							array_filter( $providers[ $provider_key ]['options'] ?? [], [ self::class, 'is_token_placeholder' ] )
+						),
+					];
+				}
 
 				// merge tokens
 				$providers = array_replace_recursive( $providers, $tokens );
@@ -114,7 +128,9 @@ class LeafletProviders extends Singleton {
 			$providers = apply_filters( 'acf_osm_leaflet_providers', $providers );
 		}
 
-		$this->providers_cache[ $cache_key ] = $providers;
+		if ( $memoize ) {
+			$this->providers_cache[ $cache_key ] = $providers;
+		}
 
 		return $providers;
 	}

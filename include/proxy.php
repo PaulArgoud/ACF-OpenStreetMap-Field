@@ -1,11 +1,7 @@
 <?php
 
- // check config
-if ( ! isset( $proxy_config ) || ! is_array( $proxy_config ) ) {
-	http_response_code( 500 );
-	exit();
-}
-
+// Runs without WordPress, so WP_DEBUG_DISPLAY doesn't apply: never print a notice into a tile
+ini_set( 'display_errors', '0' ); // phpcs:ignore WordPress.PHP.IniSet.display_errors_Disallowed
 
 if ( isset( $_SERVER['REQUEST_URI'] ) ) {
 	$request_uri     = stripslashes( $_SERVER['REQUEST_URI'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
@@ -34,26 +30,50 @@ if ( ! preg_match( '/wp-content\/maps$/', $proxy_dir ) ) {
 	exit();
 }
 
-// get local config in uploads dir
-$config_path = pathinfo( $proxy_dir, PATHINFO_DIRNAME ) . '/uploads';
+/**
+ *	Read a proxy config: JSON behind a first line that stops PHP when the file is requested over HTTP
+ *	(see MapProxy::CONFIG_GUARD). Read as data, never included.
+ *
+ *	@param string $file
+ *	@return array
+ */
+$read_proxy_config = function( $file ) {
+	if ( ! is_file( $file ) ) {
+		return [];
+	}
+	$contents  = file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+	$guard_end = strpos( $contents, '?>' );
+	if ( 0 === strpos( $contents, '<?php' ) && false !== $guard_end ) {
+		$contents = substr( $contents, $guard_end + 2 );
+	}
+	$config = json_decode( trim( $contents ), true );
+	return is_array( $config ) ? $config : [];
+};
 
-// multisite
-if ( preg_match( '/\/sites\/(\d+)\//i', $request_uri, $matches ) ) {
-	@list( $garbage, $blog_id ) = $matches; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
-	$config_path .= '/sites/' . $blog_id;
+// multisite: the main site's config is the base, the site's own config overrides it
+$blog_id     = preg_match( '/\/sites\/(\d+)\//i', $request_uri, $matches ) ? (int) $matches[1] : 0; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+$content_dir = pathinfo( $proxy_dir, PATHINFO_DIRNAME ); // the configs are in wp-content/, see MapProxy::get_config_file()
+
+$legacy_config = [];
+if ( ! defined( 'ACF_OSM_PROXY_INDEX' ) ) {
+	// Called by the index.php of an older version: not migrated yet (MapProxy::upgrade() runs on the first
+	// admin visit after an update). Use the configs it wrote, which the migration deletes: the network
+	// config the old index.php has read into $proxy_config, and the site's config in uploads/.
+	$legacy_config = isset( $proxy_config ) && is_array( $proxy_config ) ? $proxy_config : [];
+	$legacy_file   = $content_dir . '/uploads' . ( $blog_id ? '/sites/' . $blog_id : '' ) . '/acf-osm-proxy-config.json';
+	if ( is_file( $legacy_file ) ) {
+		$legacy_site_config = json_decode( file_get_contents( $legacy_file ), true ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		if ( is_array( $legacy_site_config ) ) {
+			$legacy_config = array_replace( $legacy_config, $legacy_site_config );
+		}
+	}
 }
-// $proxy_config is a global config. Merge with the local config in wp-content/maps/uploads/.
-$local_proxy_config = null;
-if ( file_exists( $config_path . '/acf-osm-proxy-config.json' ) ) {
-	// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-	$local_proxy_config = json_decode( file_get_contents( $config_path . '/acf-osm-proxy-config.json' ), true );
-} elseif ( file_exists( $config_path . '/acf-osm-proxy-config.php' ) ) {
-	// legacy executable config (pre-1.7.0)
-	$local_proxy_config = include( $config_path . '/acf-osm-proxy-config.php' );
-}
-if ( is_array( $local_proxy_config ) ) {
-	$proxy_config = array_replace( $proxy_config, $local_proxy_config );
-}
+
+$proxy_config = array_replace(
+	$legacy_config,
+	$read_proxy_config( $content_dir . '/acf-osm-proxy-config.php' ),
+	$blog_id ? $read_proxy_config( $content_dir . '/acf-osm-proxy-config-' . $blog_id . '.php' ) : []
+);
 
 @list( $garbage, $provider, $z, $x, $y, $r ) = $map_matches;
 
@@ -65,10 +85,17 @@ if ( ! isset( $proxy_config[$provider] ) ) {
 }
 
 // read from config
-$base_url   = $proxy_config[ $provider ][ 'base_url' ];
-$subdomains = $proxy_config[ $provider ][ 'subdomains' ];
+$base_url   = (string) ( $proxy_config[ $provider ][ 'base_url' ] ?? '' );
+$subdomains = $proxy_config[ $provider ][ 'subdomains' ] ?? '';
+$subdomains = is_array( $subdomains ) ? array_values( $subdomains ) : str_split( (string) $subdomains ); // 'abc' or [ 'a', 'b', 'c' ], like Leaflet
 
-$s = $subdomains[ rand( 0, strlen( $subdomains ) - 1 ) ]; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+// tile servers only: no other stream wrapper (file://, …)
+if ( ! preg_match( '/^https?:\/\//i', $base_url ) ) {
+	http_response_code( 404 );
+	exit();
+}
+
+$s = $subdomains ? (string) $subdomains[ array_rand( $subdomains ) ] : ''; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
 
 // fill vars
 $url = str_replace(
@@ -77,13 +104,12 @@ $url = str_replace(
 	$base_url
 );
 
-// response headers being forwarded
+// response headers being forwarded (Content-Type: see below)
 $send_response_headers = [
 	'Expires',
 	'Cache-Control',
 	'ETag',
 	'Date',
-	'Content-Type',
 ];
 $request_headers = [];
 
@@ -92,7 +118,7 @@ foreach ( [
 	'User-Agent',
 	'Accept',
 	'Accept-Language',
-	'Accept-Encoding',
+	// 'Accept-Encoding' is NOT forwarded: the response body is passed on as is, without its Content-Encoding
 	// 'Referer' is intentionally NOT forwarded: leaking the visitor's page URL to
 	// the upstream tile server would defeat the privacy purpose of this proxy.
 	'Sec-GPC',
@@ -162,21 +188,47 @@ $ctx = stream_context_create(['http' => [
 
 $response_reg = '/^(' . implode( '|', $send_response_headers ) . '):/i';
 
-$contents = file_get_contents( $url, false, $ctx );
+// @: the warning of a failed request holds the upstream URL, access token included
+$contents = @file_get_contents( $url, false, $ctx ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 
-if ( ! $request_status ) {
+// $http_response_header is deprecated as of PHP 8.5, http_get_last_response_headers() exists since 8.4
+$response_headers = (array) ( function_exists( 'http_get_last_response_headers' )
+	? http_get_last_response_headers()
+	: ( get_defined_vars()['http_response_header'] ?? [] ) );
+
+// status of the last response (after redirects): the stream notifications miss some, e.g. 403
+$content_type = '';
+foreach ( $response_headers as $response_header ) {
+	if ( preg_match( '/^HTTP\/\S+\s+(\d{3})/', $response_header, $status_match ) ) {
+		$http_status  = (int) $status_match[1];
+		$content_type = '';
+	} elseif ( preg_match( '/^Content-Type:\s*(.+)$/i', $response_header, $type_match ) ) {
+		$content_type = trim( $type_match[1] );
+	}
+}
+
+// no answer, or no body after a redirect loop
+if ( ! $request_status
+	|| ( false === $contents && 200 === $http_status )
+	|| ( ( false === $contents || '' === $contents ) && $http_status >= 300 && $http_status < 400 )
+) {
 	$http_status = 502;
 }
 
 http_response_code( $http_status );
 
-if ( isset( $http_response_header ) ) {
-	foreach ( $http_response_header as $response_header ) {
-		if ( preg_match( $response_reg, $response_header ) ) {
-			header( $response_header );
-		}
+// served from this site's origin: never let a response render as a page
+header( 'X-Content-Type-Options: nosniff' );
+header( "Content-Security-Policy: default-src 'none'; sandbox" );
+
+foreach ( $response_headers as $response_header ) {
+	if ( preg_match( $response_reg, $response_header ) ) {
+		header( $response_header );
 	}
-	if ( 200 === $http_status ) {
-		echo $contents; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-	}
+}
+
+if ( 200 === $http_status ) {
+	// one image type, parameters allowed, no second type after a comma
+	header( 'Content-Type: ' . ( preg_match( '/^image\/[\w.+-]+\s*(;[^,]*)?$/i', $content_type ) ? $content_type : 'application/octet-stream' ) );
+	echo $contents; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }

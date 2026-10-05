@@ -116,6 +116,13 @@ class Plugin extends Singleton {
 	 *	@action plugins_loaded
 	 */
 	public function maybe_upgrade() {
+		// once per request: also called by MapProxy::setup_proxies()
+		static $done = false;
+		if ( $done ) {
+			return;
+		}
+		$done = true;
+
 		// trigger upgrade
 		$new_version = $this->get_version();
 		$old_version = get_site_option( 'acf-openstreetmap-field_version' );
@@ -124,7 +131,24 @@ class Plugin extends Singleton {
 		if ( version_compare( $new_version, $old_version, '>' ) ) {
 
 			// Do update stuff here
-			MapProxy::instance()->setup_proxy_dir( true );
+			// regenerates the proxy directory and configs, deletes the public configs of 1.7.1 – 1.7.2.
+			// Retried on the next admin request until it succeeds.
+			$result = MapProxy::instance()->upgrade();
+			if ( is_wp_error( $result ) ) {
+				$notice = function() use ( $result ) {
+					// the files may belong to other sites of the network
+					if ( current_user_can( is_multisite() ? 'manage_network_options' : 'manage_options' ) ) {
+						printf(
+							'<div class="notice notice-error"><p>%s</p></div>',
+							/* translators: %s error message */
+							esc_html( sprintf( __( 'ACF OpenStreetMap Field could not finish its update: %s', 'acf-openstreetmap-field' ), $result->get_error_message() ) )
+						);
+					}
+				};
+				add_action( 'admin_notices', $notice );
+				add_action( 'network_admin_notices', $notice );
+				return;
+			}
 
 			update_site_option( 'acf-openstreetmap-field_version', $new_version ); // TODO: store blog-wide
 		}

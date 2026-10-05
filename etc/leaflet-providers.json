@@ -989,7 +989,7 @@
 	"GeoportailFrance": {
 		"url": "https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE={style}&TILEMATRIXSET=PM&FORMAT={format}&LAYER={variant}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}",
 		"options": {
-			"attribution": "<a target=\"_blank\" href=\"https://www.geoportail.gouv.fr/\">Geoportail France</a>",
+			"attribution": "&copy; <a target=\"_blank\" href=\"https://www.ign.fr/\">IGN</a> &ndash; <a target=\"_blank\" href=\"https://cartes.gouv.fr/\">Géoplateforme</a>",
 			"bounds": [
 				[
 					-75,
@@ -1009,14 +1009,8 @@
 		"variants": {
 			"plan": {
 				"options": {
-					"variant": "GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2"
-				}
-			},
-			"parcels": {
-				"options": {
-					"variant": "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
-					"style": "PCI vecteur",
-					"maxZoom": 20
+					"variant": "GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2",
+					"maxZoom": 19
 				}
 			},
 			"orthos": {
@@ -1025,6 +1019,178 @@
 					"format": "image/jpeg",
 					"variant": "ORTHOIMAGERY.ORTHOPHOTOS"
 				}
+			},
+			"orthosIRC": {
+				"options": {
+					"minZoom": 6,
+					"maxZoom": 19,
+					"format": "image/jpeg",
+					"variant": "ORTHOIMAGERY.ORTHOPHOTOS.IRC"
+				}
+			},
+			"orthos1950": {
+				"options": {
+					"bounds": [
+						[
+							-21.5,
+							-67.8
+						],
+						[
+							51.1,
+							55.9
+						]
+					],
+					"variant": "ORTHOIMAGERY.ORTHOPHOTOS.1950-1965"
+				}
+			},
+			"etatMajor": {
+				"options": {
+					"bounds": [
+						[
+							41.1,
+							-6.1
+						],
+						[
+							51.3,
+							11
+						]
+					],
+					"minZoom": 6,
+					"maxNativeZoom": 15,
+					"format": "image/jpeg",
+					"variant": "GEOGRAPHICALGRIDSYSTEMS.ETATMAJOR40"
+				}
+			},
+			"cassini": {
+				"options": {
+					"attribution": "&copy; <a target=\"_blank\" href=\"https://www.bnf.fr/\">BnF</a>, <a target=\"_blank\" href=\"https://www.ign.fr/\">IGN</a> &ndash; <a target=\"_blank\" href=\"https://cartes.gouv.fr/\">Géoplateforme</a>",
+					"bounds": [
+						[
+							40.9,
+							-6.4
+						],
+						[
+							51.9,
+							10
+						]
+					],
+					"minZoom": 6,
+					"maxNativeZoom": 14,
+					"variant": "BNF-IGNF_GEOGRAPHICALGRIDSYSTEMS.CASSINI"
+				}
+			},
+			"parcels": {
+				"options": {
+					"bounds": [
+						[
+							-21.5,
+							-63.4
+						],
+						[
+							51.4,
+							56
+						]
+					],
+					"maxZoom": 19,
+					"variant": "CADASTRALPARCELS.PARCELLAIRE_EXPRESS",
+					"style": "PCI vecteur"
+				},
+				"isOverlay": true
+			},
+			"adminLimits": {
+				"options": {
+					"bounds": [
+						[
+							-21.5,
+							-63.4
+						],
+						[
+							51.4,
+							56
+						]
+					],
+					"minZoom": 6,
+					"maxNativeZoom": 16,
+					"variant": "LIMITES_ADMINISTRATIVES_EXPRESS.LATEST",
+					"maxZoom": 19
+				},
+				"isOverlay": true
+			},
+			"roads": {
+				"options": {
+					"bounds": [
+						[
+							-21.5,
+							-64
+						],
+						[
+							71.6,
+							56
+						]
+					],
+					"minZoom": 6,
+					"variant": "TRANSPORTNETWORKS.ROADS",
+					"maxNativeZoom": 18,
+					"maxZoom": 19
+				},
+				"isOverlay": true
+			},
+			"railways": {
+				"options": {
+					"bounds": [
+						[
+							-21.5,
+							-64
+						],
+						[
+							71.6,
+							56
+						]
+					],
+					"minZoom": 6,
+					"variant": "TRANSPORTNETWORKS.RAILWAYS",
+					"maxNativeZoom": 18,
+					"maxZoom": 19
+				},
+				"isOverlay": true
+			},
+			"hydrography": {
+				"options": {
+					"bounds": [
+						[
+							-21.5,
+							-64
+						],
+						[
+							71.6,
+							56
+						]
+					],
+					"minZoom": 6,
+					"variant": "HYDROGRAPHY.HYDROGRAPHY",
+					"maxNativeZoom": 18,
+					"maxZoom": 19
+				},
+				"isOverlay": true
+			},
+			"contourLines": {
+				"options": {
+					"bounds": [
+						[
+							-21.5,
+							-63.4
+						],
+						[
+							51.4,
+							56
+						]
+					],
+					"minZoom": 6,
+					"variant": "ELEVATION.CONTOUR.LINE",
+					"maxNativeZoom": 18,
+					"maxZoom": 19
+				},
+				"isOverlay": true
 			}
 		}
 	},

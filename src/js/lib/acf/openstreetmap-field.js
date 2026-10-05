@@ -1,3 +1,4 @@
+import { MapInput } from 'media/views';
 
 //  prevent map initialization in clone fields
 document.addEventListener( 'acf-osm-map-create', e => e.target.closest('[data-id="acfcloneindex"]') && e.preventDefault() )
@@ -13,7 +14,8 @@ acf.registerFieldType( acf.Field.extend({
 	getMapValue: function() {
 		const editor = this.get('osmEditor')
 		if ( editor ) {
-			return editor.model.toJSON()
+			// plain data, like the parsed input value (markers as an array, not a Backbone collection)
+			return JSON.parse( JSON.stringify( editor.model ) )
 		}
 		return JSON.parse( this.$input().val() )
 	},
@@ -31,22 +33,30 @@ acf.registerFieldType( acf.Field.extend({
 	},
 	setup: function($field) {
 		const mapDiv = $field.get(0).querySelector('.leaflet-map')
-		// reset map
-		if ( mapDiv.matches('.leaflet-container') ) {
-			// remove cusotm leaflet outer control areas
-			$field.get(0).querySelectorAll('.leaflet-above,.leaflet-below').forEach( el => el.remove() )
+		const editor = MapInput.getByElement( mapDiv )
+		let newMapDiv = null
+		// reset map (field duplicated with a repeater row or flexible content layout: a copy of an initialized map without editor)
+		if ( mapDiv.matches('.leaflet-container') && ! editor ) {
+			// remove custom leaflet outer control areas and the numeric position inputs
+			$field.get(0).querySelectorAll('.leaflet-above,.leaflet-below,.acf-osm-position').forEach( el => el.remove() )
 			// reset class
-			// create and init fresh clone
-			const newMapDiv = mapDiv.cloneNode(false)
+			// create fresh clone
+			newMapDiv = mapDiv.cloneNode(false)
 			newMapDiv.innerHTML = '';
 			newMapDiv.setAttribute('class','leaflet-map')
 			mapDiv.parentNode.replaceChild(newMapDiv, mapDiv);
-			newMapDiv.dispatchEvent( new CustomEvent('acf-osm-map-added', { bubbles: true } ))
 		}
 		acf.Field.prototype.setup.apply( this, [ $field ] )
 		this.$map().get(0).addEventListener('osm-editor/initialized', e => {
 			this.set('osmEditor',e.detail.view);
 		})
+		if ( newMapDiv ) {
+			// init the clone once the listener above can pick up its editor
+			newMapDiv.dispatchEvent( new CustomEvent('acf-osm-map-added', { bubbles: true } ))
+		} else if ( editor ) {
+			// map already initialized before this field
+			this.set( 'osmEditor', editor )
+		}
 	},
 	initialize: function(){
 		const mapDiv = this.$map().get(0)

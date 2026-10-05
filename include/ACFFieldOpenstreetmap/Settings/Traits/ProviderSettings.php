@@ -225,19 +225,27 @@ trait ProviderSettings {
 	 * @return string sanitized value
 	 */
 	public function sanitize_provider_tokens( $new_values ) {
-		$core = Core\Core::instance();
-		$providers = Core\LeafletProviders::instance();
-
-		$token_options = $providers->get_token_options();
-
-		$prev_values = get_option('acf_osm_provider_tokens');
 
 		// merge new values
-		$values = array_replace_recursive( $prev_values, $new_values );
-		// remove empty values
-		$values = Helper\ArrayHelper::filter_recursive( $values );
+		$values = array_replace_recursive( (array) get_option( 'acf_osm_provider_tokens', [] ), (array) $new_values );
 
-		return $values;
+		// Keep access tokens only: [ provider ][ 'options' ][ option with a token placeholder in the catalogue ].
+		// Anything else would be merged over the catalogue, e.g. a tile url the proxy then fetches for anyone.
+		// Empty values are dropped.
+		$tokens = [];
+		foreach ( Core\LeafletProviders::instance()->get_providers( [], true ) as $provider_key => $provider ) {
+			foreach ( $provider['options'] ?? [] as $option => $placeholder ) {
+				if ( ! Core\LeafletProviders::is_token_placeholder( $placeholder ) ) {
+					continue;
+				}
+				$token = $values[ $provider_key ]['options'][ $option ] ?? '';
+				if ( is_scalar( $token ) && '' !== trim( wp_strip_all_tags( (string) $token ) ) ) {
+					$tokens[ $provider_key ]['options'][ $option ] = trim( wp_strip_all_tags( (string) $token ) );
+				}
+			}
+		}
+
+		return $tokens;
 	}
 
 	/**

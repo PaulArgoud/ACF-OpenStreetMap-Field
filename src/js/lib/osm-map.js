@@ -99,8 +99,35 @@ import 'leaflet-gesture-handling'; // registers the optional `gestureHandling` m
 
 		// reload maps when they become visible
 		el.addEventListener( 'acf-osm-show', e => {
-			map.invalidateSize();
+			// dispatched on every attribute change in the page: only when the size actually changed
+			const size = map.getSize()
+			if ( size.x !== el.clientWidth || size.y !== el.clientHeight ) {
+				map.invalidateSize();
+			}
 		} )
+
+		// Follow container size changes that come without any attribute change, e.g. the WP 7.1 block
+		// editor's meta box pane settling or its settings sidebar closing. Keeps the center (pan),
+		// so the editor sees at most a sub-pixel move.
+		if ( 'ResizeObserver' in window ) {
+			let frame = 0
+			const resizeObserver = new ResizeObserver( () => {
+				cancelAnimationFrame( frame )
+				frame = requestAnimationFrame( () => {
+					const size = map.getSize()
+					if ( el.offsetWidth && el.offsetHeight // skip hidden maps
+						&& ( size.x !== el.clientWidth || size.y !== el.clientHeight )
+					) {
+						map.invalidateSize( { debounceMoveend: true } )
+					}
+				} )
+			} )
+			resizeObserver.observe( el )
+			map.on( 'unload', () => {
+				cancelAnimationFrame( frame )
+				resizeObserver.disconnect()
+			} )
+		}
 
 		// finished!
 		el.dispatchEvent( new CustomEvent( 'acf-osm-map-created', {
@@ -149,9 +176,11 @@ import 'leaflet-gesture-handling'; // registers the optional `gestureHandling` m
 			})
 		});
 		window.addEventListener('DOMContentLoaded', e => {
-			leafletAll(document.body)
-			domObserver.observe( document.body, { subtree: true, childList: true } );
-			visibilityObserver.observe( document.body, { subtree: true, attributes: true } );
+			// no body yet in the block editor's canvas iframe (WP 7.1+) when this runs
+			const root = document.body || document.documentElement
+			leafletAll(root)
+			domObserver.observe( root, { subtree: true, childList: true } );
+			visibilityObserver.observe( root, { subtree: true, attributes: true } );
 		})
 	}
 
@@ -297,7 +326,7 @@ import 'leaflet-gesture-handling'; // registers the optional `gestureHandling` m
 		}
 
 		layers
-			.sort( (a,b) => a.overlay ) // overlays always on top
+			.sort( (a,b) => a.overlay - b.overlay ) // overlays always on top
 			.forEach( layer => { // add
 
 				layer.addTo(map)

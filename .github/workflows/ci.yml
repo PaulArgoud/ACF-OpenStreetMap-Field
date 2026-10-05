@@ -63,8 +63,9 @@ jobs:
 
       - name: Fail if the build changed committed assets
         run: |
+          git add --intent-to-add assets
           git diff --exit-code -- assets \
-            || ( echo "::error::Built assets differ from committed ones. Run 'npm run build' and commit." && exit 1 )
+            || ( echo "::error::Built assets differ from committed ones. Rebuild with the sass and webpack commands of this job (npm run build adds source maps) and commit." && exit 1 )
 
   test:
     name: PHPUnit (PHP ${{ matrix.php }})
@@ -108,8 +109,8 @@ jobs:
             sleep 15
           done
 
-      - name: Install the WordPress test suite (WP 7.0)
-        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 7.0 true
+      - name: Install the WordPress test suite (WP 7.1.2)
+        run: bash bin/install-wp-tests.sh wordpress_test root root 127.0.0.1 7.1.2 true
 
       - name: Install Secure Custom Fields into the test site
         run: |
