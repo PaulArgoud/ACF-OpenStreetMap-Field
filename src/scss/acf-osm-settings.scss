@@ -19,12 +19,14 @@
 	[type="radio"]:checked {
 		&[id="acf-osm-tab-1"] ~ .acf-osm-tab-1,
 		&[id="acf-osm-tab-2"] ~ .acf-osm-tab-2,
-		&[id="acf-osm-tab-3"] ~ .acf-osm-tab-3 {
+		&[id="acf-osm-tab-3"] ~ .acf-osm-tab-3,
+		&[id="acf-osm-tab-4"] ~ .acf-osm-tab-4 {
 			display: block;
 		}
 		&[id="acf-osm-tab-1"] ~ .nav-tab-wrapper [for="acf-osm-tab-1"],
 		&[id="acf-osm-tab-2"] ~ .nav-tab-wrapper [for="acf-osm-tab-2"],
-		&[id="acf-osm-tab-3"] ~ .nav-tab-wrapper [for="acf-osm-tab-3"] {
+		&[id="acf-osm-tab-3"] ~ .nav-tab-wrapper [for="acf-osm-tab-3"],
+		&[id="acf-osm-tab-4"] ~ .nav-tab-wrapper [for="acf-osm-tab-4"] {
 			margin-bottom: -1px;
 			box-shadow: none;
 			&,

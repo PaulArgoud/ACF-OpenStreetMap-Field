@@ -42,7 +42,7 @@ You can choose from a long list of map styles and it supports multiple markers.
  - *0:* No markers
  - *Any other value:* Maximum number of markers. If the return format is *iFrame* there can only be one marker.
 
-**Theme templates:** the map markup comes from templates you can override in your theme (`osm-maps/leaflet.php`, `osm-maps/osm.php`). An override must escape everything it prints: the field tells ACF that it escapes its own output.
+**Theme templates:** the map markup comes from templates you can override in your theme (`osm-maps/leaflet.php`, `osm-maps/osm.php`). An override must escape everything it prints: the field tells ACF that it escapes its own output. Escape attributes with `acf_osm_esc_attrs()`, not `acf_esc_attr()`: it keeps HTML entities in marker labels from turning into HTML, and works without ACF (see Modern Fields below).
 
 ## Address search
 
@@ -58,6 +58,15 @@ The *Reverse Geocoder Detail Level* setting sets how detailed the automatic mark
 ## French maps (Géoplateforme)
 
 The *Geoportail France* provider offers IGN maps from the [Géoplateforme](https://cartes.gouv.fr/), without API key: Plan IGN, aerial photos (also infrared and 1950–1965), the État-major and Cassini historical maps, and overlays for cadastral parcels, administrative limits, roads, railways, hydrography and contour lines.
+
+## Modern Fields
+
+With [Modern Fields](https://modern-fields.com) 1.5 or later:
+
+ - *Settings › OpenStreetMap › Modern Fields* sets the layer of its Map field when it uses OpenStreetMap: a base layer enabled in this plugin, such as an IGN map once *Geoportail France* is enabled in the *Providers* tab (it is off by default). Layers with 512px tiles (MapBox, MapTiler) are left out. A provider with the map proxy enabled keeps its access key hidden. The Modern Fields map zooms up to 19, so a layer with a smaller zoom range stays empty beyond it. A `MODERN_FIELDS_OSM_TILE_URL` constant takes precedence.
+ - Show a location on the front end with this plugin's map (Modern Fields itself only links to one): `<?php acf_osm_the_map( get_field( 'my_location' ) ); ?>`
+
+`acf_osm_the_map()` and `acf_osm_get_map()` also take an ACF Google Map value or the raw value of an OpenStreetMap field (*Raw* return format, or `get_field( 'my_map', false, false )`), and work without ACF. Options: `acf_osm_the_map( $value, [ 'height' => 300, 'zoom' => 12, 'layers' => [ 'OpenTopoMap' ], 'marker' => false, 'template' => 'osm' ] )`.
 
 ## Map Proxy
 The plugin comes with a proxy mechanism for map tiles. If enabled the browser loads the tiles from your server rather than directly from the tile provider.

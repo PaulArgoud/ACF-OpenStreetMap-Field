@@ -30,6 +30,7 @@ Pick a tile provider, set the view, drop one or many markers — then output a r
 - [Address search](#address-search)
 - [Customization](#customization)
 - [Map Proxy](#map-proxy)
+- [Modern Fields](#modern-fields)
 - [Integrations](#integrations)
 - [Development](#development)
 - [Testing](#testing)
@@ -44,7 +45,7 @@ Pick a tile provider, set the view, drop one or many markers — then output a r
 - 🎨 **Custom markers** — a no-code marker icon URL, plus full control through WordPress filters and JavaScript events.
 - 🇫🇷 **Géoplateforme (IGN)** — French address search (Base Adresse Nationale, no API key) and IGN layers: Plan IGN, aerial photos, historical maps, cadastral parcels and other overlays.
 - 🔒 **Map Proxy** — serve tiles from your own server to hide API keys and comply with privacy regulations such as the GDPR.
-- 🔌 **Integrations** — WPGraphQL, WPML, Polylang and the ACF REST API.
+- 🔌 **Integrations** — WPGraphQL, WPML, Polylang, the ACF REST API and Modern Fields.
 - 🧱 **Block editor, widgets & frontend forms** ready, with overridable theme templates.
 
 ## Screenshots
@@ -131,7 +132,7 @@ The *Reverse Geocoder Detail Level* setting sets how detailed the automatic mark
 The *Geoportail France* tile provider adds the matching IGN maps from the [Géoplateforme](https://cartes.gouv.fr/): Plan IGN, aerial photos (also infrared and 1950–1965), the État-major and Cassini historical maps, and overlays for cadastral parcels, administrative limits, roads, railways, hydrography and contour lines.
 
 ## Customization
-**Theme templates** — the map markup comes from templates you can override in your theme (`osm-maps/leaflet.php`, `osm-maps/osm.php`). An override must escape everything it prints: the field tells ACF that it escapes its own output.
+**Theme templates** — the map markup comes from templates you can override in your theme (`osm-maps/leaflet.php`, `osm-maps/osm.php`). An override must escape everything it prints: the field tells ACF that it escapes its own output. Escape attributes with `acf_osm_esc_attrs()`, not `acf_esc_attr()`: it keeps HTML entities in marker labels from turning into HTML, and works without ACF (see [Modern Fields](#modern-fields)).
 
 **Custom marker icon (PHP)** — return some HTML to render a `divIcon`:
 
@@ -170,11 +171,34 @@ The proxy configuration holds the access tokens of the proxied providers. It is 
 
 More details in [The Map Proxy](https://github.com/mcguffin/acf-openstreetmap-field/wiki/The-Map-Proxy) page of the original project's wiki.
 
+## Modern Fields
+With [Modern Fields](https://modern-fields.com) 1.5 or later:
+
+- **Map layer** — under *Settings › OpenStreetMap › Modern Fields*, choose the layer the Modern Fields Map field shows when it uses OpenStreetMap: a base layer enabled in this plugin, such as an IGN map once *Geoportail France* is enabled in the *Providers* tab (it is off by default). Layers with 512px tiles (MapBox, MapTiler) are left out: Modern Fields can't display them. A provider with the map proxy enabled keeps its access key hidden. The Modern Fields map zooms up to 19, so a layer with a smaller zoom range (shown in the list) stays empty beyond it. A `MODERN_FIELDS_OSM_TILE_URL` constant takes precedence.
+- **Front-end map** — Modern Fields only links to a map. Show the location with this plugin's map instead:
+
+```php
+<?php acf_osm_the_map( get_field( 'my_location' ) ); ?>
+```
+
+`acf_osm_the_map()` prints and `acf_osm_get_map()` returns the map of a location value: a Modern Fields Map field, an ACF Google Map field, or an OpenStreetMap field with the *Raw* return format (with another format, pass the unformatted value: `get_field( 'my_map', false, false )`). They work without ACF. The second argument sets the map:
+
+| Option | Default |
+| --- | --- |
+| `height` | `400` (pixels) |
+| `zoom` | The zoom of the value, else `14` |
+| `layers` | The layers of the value, else the Modern Fields layer, else `[ 'OpenStreetMap.Mapnik' ]` |
+| `marker` | `true`: a marker labelled with the address |
+| `template` | `'leaflet'`, `'osm'` (iframe) or a template of your theme (`osm-maps/*.php`) |
+| `fit_bounds`, `gesture_handling` | `false` |
+| `marker_icon_url` | `''` |
+
 ## Integrations
 - **WPGraphQL** — exposes a structured `AcfOpenStreetMap` type (requires [WPGraphQL](https://www.wpgraphql.com/) and [WPGraphQL for ACF](https://acf.wpgraphql.com/)).
 - **WPML / Polylang** — map values are copied / synced across translations instead of being treated as translatable strings.
 - **ACF REST API** — field values are available through the WordPress REST API, and can be written back in the same shape.
 - **Géoplateforme (IGN)** — French address search and IGN maps, see [Address search](#address-search).
+- **Modern Fields** — layer of its Map field and front-end maps, see [Modern Fields](#modern-fields).
 
 ## Development
 ```shell

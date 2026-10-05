@@ -15,6 +15,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 $acf_osm_options = [
 	'acf_osm_features',
 	'acf_osm_geocoder',
+	'acf_osm_modern_fields',
 	'acf_osm_provider_tokens',
 	'acf_osm_providers',
 	'acf_osm_proxy',

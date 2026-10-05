@@ -50,17 +50,7 @@ class OpenStreetMap extends \acf_field {
 		 */
 		$this->category = version_compare( acf_get_setting( 'version' ), '6.1', '>=' ) ? 'advanced' : 'jquery';
 
-		$this->default_values = [
-			// hamburg
-			'lat'		=> 53.55064,
-			'lng'		=> 10.00065,
-			'zoom'		=> 12,
-			'layers'	=> [ 'OpenStreetMap.Mapnik' ],
-			'markers'	=> [],
-			// gm compatibility
-			'address'	=> '',
-			'version'	=> '',
-		];
+		$this->default_values = MapValue::DEFAULT_VALUES;
 		/*
 		 *  defaults (array) Array of default settings which are merged into the field object. These are used later in settings
 		 */

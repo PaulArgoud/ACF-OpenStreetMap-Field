@@ -60,4 +60,71 @@ class LeafletProvidersTest extends WP_UnitTestCase {
 		$this->assertFalse( Core\LeafletProviders::is_token_placeholder( 42 ) );
 		$this->assertFalse( Core\LeafletProviders::is_token_placeholder( null ) );
 	}
+
+	/**
+	 * @covers ACFFieldOpenstreetmap\Core\LeafletProviders::get_tile_layer
+	 */
+	public function test_get_tile_layer() {
+		$providers = Core\LeafletProviders::instance();
+
+		$layer = $providers->get_tile_layer( 'OpenStreetMap.Mapnik' );
+		$this->assertSame( 'https://tile.openstreetmap.org/{z}/{x}/{y}.png', $layer['url'] );
+		$this->assertFalse( $layer['isOverlay'] );
+		$this->assertStringContainsString( 'openstreetmap.org/copyright', $layer['options']['attribution'] );
+
+		// variant options merged and substituted (GeoportailFrance is disabled by default: it has bounds)
+		$layer = $providers->get_tile_layer( 'GeoportailFrance.orthos', [ 'credentials' ] );
+		$this->assertStringContainsString( '&FORMAT=image/jpeg&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', $layer['url'] );
+		$this->assertSame( 19, $layer['options']['maxZoom'] );
+		$this->assertArrayNotHasKey( 'variant', $layer['options'] );
+		$this->assertTrue( $providers->get_tile_layer( 'GeoportailFrance.parcels', [ 'credentials' ] )['isOverlay'] );
+
+		// Leaflet options also in the URL still apply
+		$layer = $providers->get_tile_layer( 'NASAGIBS.ModisTerraAOD', [ 'credentials' ] );
+		$this->assertStringContainsString( '/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png', $layer['url'] );
+		$this->assertSame( 6, $layer['options']['maxZoom'] );
+		$this->assertTrue( $layer['isOverlay'] );
+
+		// unknown
+		$this->assertNull( $providers->get_tile_layer( 'Nope' ) );
+		$this->assertNull( $providers->get_tile_layer( 'OpenStreetMap.Nope' ) );
+		$this->assertNull( $providers->get_tile_layer( '' ) );
+
+		// no access token
+		$this->assertNull( $providers->get_tile_layer( 'Thunderforest.OpenCycleMap' ) );
+
+		update_option( 'acf_osm_provider_tokens', [
+			'Thunderforest' => [ 'options' => [ 'apikey' => 'abc123' ] ],
+		] );
+		$layer = $providers->get_tile_layer( 'Thunderforest.OpenCycleMap' );
+		$this->assertSame( 'https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}.png?apikey=abc123', $layer['url'] );
+		$this->assertArrayNotHasKey( 'apikey', $layer['options'] );
+
+		// proxied: the token stays on the server
+		add_filter( 'acf_osm_force_proxy', '__return_true' );
+		$cache = new ReflectionProperty( Core\LeafletProviders::class, 'providers_cache' );
+		$cache->setAccessible( true );
+		$cache->setValue( $providers, [] );
+
+		$layer = $providers->get_tile_layer( 'Thunderforest.OpenCycleMap' );
+		$this->assertSame( content_url( 'maps/Thunderforest.OpenCycleMap/{z}/{x}/{y}' ), $layer['url'] );
+		$this->assertStringNotContainsString( 'abc123', wp_json_encode( $layer ) );
+
+		remove_filter( 'acf_osm_force_proxy', '__return_true' );
+		$cache->setValue( $providers, [] );
+		delete_option( 'acf_osm_provider_tokens' );
+
+		// a placeholder used twice
+		$add_provider = function( $providers ) {
+			$providers['Twice'] = [
+				'url'     => 'https://{variant}.example.org/{z}/{x}/{y}.png?style={variant}',
+				'options' => [ 'variant' => 'v' ],
+			];
+			return $providers;
+		};
+		add_filter( 'acf_osm_leaflet_providers', $add_provider );
+		$this->assertSame( 'https://v.example.org/{z}/{x}/{y}.png?style=v', $providers->get_tile_layer( 'Twice' )['url'] );
+		remove_filter( 'acf_osm_leaflet_providers', $add_provider );
+		$cache->setValue( $providers, [] );
+	}
 }

@@ -21,6 +21,9 @@ class Core extends Plugin {
 
 		add_action( 'init', [ '\ACFFieldOpenstreetmap\Compat\WPGraphQL', 'instance'] );
 
+		// only adds filters, read by Modern Fields whenever it needs its map settings
+		Compat\ModernFields::instance();
+
 		add_action( 'init', [ '\ACFFieldOpenstreetmap\Core\Templates', 'instance'] );
 		add_action( 'init', [ '\ACFFieldOpenstreetmap\Core\MapProxy', 'instance'] );
 
@@ -224,7 +227,12 @@ class Core extends Plugin {
 		// field css
 		// with the canvas styles for block editors that are not iframed (WP < 7.1, ACF v2 blocks). In an iframed canvas WP
 		// doesn't copy them over again, the canvas already has a stylesheet with that id (enqueue_editor_canvas_assets())
-		wp_register_style( 'acf-input-osm', $this->get_asset_url( 'assets/css/acf-input-osm.css' ), [ 'leaflet', 'acf-input', 'dashicons', 'acf-osm-editor-canvas' ], $this->get_version() );
+		// the settings page also uses these styles, without ACF (Modern Fields) there is no 'acf-input'
+		wp_register_style( 'acf-input-osm', $this->get_asset_url( 'assets/css/acf-input-osm.css' ), array_merge(
+			[ 'leaflet' ],
+			wp_style_is( 'acf-input', 'registered' ) ? [ 'acf-input' ] : [],
+			[ 'dashicons', 'acf-osm-editor-canvas' ]
+		), $this->get_version() );
 
 
 		// field group admin js

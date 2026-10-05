@@ -9,6 +9,9 @@ class LeafletProviders extends Singleton {
 	/** @var array */
 	private $leaflet_providers = null;
 
+	/** @var array Options of L.TileLayer a URL may also use */
+	const TILE_LAYER_OPTIONS = [ 'minZoom', 'maxZoom', 'minNativeZoom', 'maxNativeZoom', 'zoomOffset', 'tileSize', 'opacity', 'zIndex', 'bounds', 'subdomains', 'tms', 'detectRetina' ];
+
 	/** @var array Memoized results of get_providers(), keyed by filter set + settings state. */
 	private $providers_cache = [];
 
@@ -184,6 +187,107 @@ class LeafletProviders extends Singleton {
 		}
 
 		return $providers;
+	}
+
+	/**
+	 *	A layer of the catalogue as a plain Leaflet tile layer, for code creating its own
+	 *	`L.tileLayer( url, options )` (e.g. Modern Fields): the provider merged with its variant,
+	 *	every URL placeholder Leaflet doesn't fill in itself replaced, the attribution resolved.
+	 *	Proxied providers point to the map proxy.
+	 *
+	 *	@param string $layer_key 'Provider' or 'Provider.variant'
+	 *	@param array $filters See get_providers()
+	 *	@return array|null [
+	 *		'url'       => (string) Leaflet URL template,
+	 *		'options'   => (array) Leaflet tile layer options, without the other options now in the URL (access tokens, …),
+	 *		'isOverlay' => (bool),
+	 *	] or null if the layer is unknown, unavailable (e.g. disabled, no access token)
+	 *	or its URL needs a value the catalogue doesn't have.
+	 */
+	public function get_tile_layer( $layer_key, $filters = [ 'credentials', 'enabled' ] ) {
+
+		$providers = $this->get_providers( $filters );
+
+		[ $provider_key, $variant_key ] = array_pad( explode( '.', (string) $layer_key, 2 ), 2, '' );
+
+		if ( ! isset( $providers[ $provider_key ]['url'] ) ) {
+			return null;
+		}
+
+		$provider   = $this->unify_provider_variants( $providers[ $provider_key ] );
+		$url        = (string) $provider['url'];
+		$options    = (array) ( $provider['options'] ?? [] );
+		$is_overlay = ! empty( $provider['isOverlay'] );
+
+		if ( '' !== $variant_key ) {
+			if ( ! isset( $provider['variants'][ $variant_key ] ) ) {
+				return null;
+			}
+			$variant    = $provider['variants'][ $variant_key ];
+			$url        = (string) ( $variant['url'] ?? $url );
+			$options    = array_merge( $options, (array) $variant['options'] );
+			$is_overlay = (bool) ( $variant['isOverlay'] ?? $is_overlay );
+		}
+
+		// the code creating the layer won't pass these options
+		if ( ! empty( $options['tms'] ) ) {
+			$url = str_replace( '{y}', '{-y}', $url );
+		}
+		$subdomains = $options['subdomains'] ?? 'abc'; // Leaflet default
+		if ( 'abc' !== $subdomains ) {
+			$url = str_replace( '{s}', (string) ( is_array( $subdomains ) ? reset( $subdomains ) : substr( (string) $subdomains, 0, 1 ) ), $url );
+		}
+
+		// same pattern as L.Util.template()
+		$resolved = true;
+		$used     = [];
+		$url = preg_replace_callback( '/\{ *([\w_ -]+) *\}/', function( $match ) use ( $options, &$resolved, &$used ) {
+			$name = $match[1];
+			// filled in by L.TileLayer
+			if ( in_array( $name, [ 'x', 'y', '-y', 'z', 's', 'r' ], true ) ) {
+				return $match[0];
+			}
+			$value = $options[ $name ] ?? null;
+			if ( ! ( is_string( $value ) || is_int( $value ) || is_float( $value ) ) || self::is_token_placeholder( $value ) ) {
+				$resolved = false;
+				return $match[0];
+			}
+			$used[ $name ] = true;
+			return str_replace( ' ', '%20', (string) $value );
+		}, $url );
+
+		if ( ! $resolved ) {
+			return null;
+		}
+
+		// e.g. an access token: don't pass it around twice. Layer options in the URL (NASAGIBS {maxZoom}) still apply.
+		$options = array_diff_key( $options, array_diff_key( $used, array_flip( self::TILE_LAYER_OPTIONS ) ) );
+
+		$options['attribution'] = $this->resolve_attribution( (string) ( $options['attribution'] ?? '' ) );
+
+		return [
+			'url'       => $url,
+			'options'   => $options,
+			'isOverlay' => $is_overlay,
+		];
+	}
+
+	/**
+	 *	Replace `{attribution.Provider}` with the attribution of that provider, like the JS provider layer does.
+	 *
+	 *	@param string $attribution
+	 *	@param int $depth
+	 *	@return string
+	 */
+	private function resolve_attribution( $attribution, $depth = 0 ) {
+		if ( $depth > 5 || ! str_contains( $attribution, '{attribution.' ) ) {
+			return $attribution;
+		}
+		// references may point to disabled providers
+		$providers = $this->get_providers( [ 'credentials' ] );
+		return preg_replace_callback( '/\{attribution\.(\w*)\}/', function( $match ) use ( $providers, $depth ) {
+			return $this->resolve_attribution( (string) ( $providers[ $match[1] ]['options']['attribution'] ?? '' ), $depth + 1 );
+		}, $attribution );
 	}
 
 	public function get_layer_config() {

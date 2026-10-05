@@ -767,7 +767,8 @@
 			"overlay": {
 				"options": {
 					"variant": "bmapoverlay"
-				}
+				},
+				"isOverlay": true
 			},
 			"terrain": {
 				"options": {
@@ -870,7 +871,8 @@
 					"format": "png",
 					"maxZoom": 7,
 					"opacity": 0.75
-				}
+				},
+				"isOverlay": true
 			},
 			"ModisTerraSnowCover": {
 				"options": {
@@ -878,7 +880,8 @@
 					"format": "png",
 					"maxZoom": 8,
 					"opacity": 0.75
-				}
+				},
+				"isOverlay": true
 			},
 			"ModisTerraAOD": {
 				"options": {
@@ -886,7 +889,8 @@
 					"format": "png",
 					"maxZoom": 6,
 					"opacity": 0.75
-				}
+				},
+				"isOverlay": true
 			},
 			"ModisTerraChlorophyll": {
 				"options": {
@@ -894,7 +898,8 @@
 					"format": "png",
 					"maxZoom": 7,
 					"opacity": 0.75
-				}
+				},
+				"isOverlay": true
 			}
 		}
 	},

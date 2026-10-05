@@ -19,7 +19,7 @@ $iframe_atts = [
 ];
 
 ?>
-<iframe src="<?php echo esc_url( $osm_providers->get_iframe_url( $osm_map ) ); ?>" <?php echo acf_esc_attr( $iframe_atts ); ?>></iframe><br/>
+<iframe src="<?php echo esc_url( $osm_providers->get_iframe_url( $osm_map ) ); ?>" <?php echo acf_osm_esc_attrs( $iframe_atts ); ?>></iframe><br/>
 <small>
 	<a target="_blank" href="<?php echo esc_url( $osm_providers->get_link_url( $osm_map ) ); ?>">
 		<?php esc_html_e( 'View Larger Map', 'acf-openstreetmap-field' ); ?>

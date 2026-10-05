@@ -2,6 +2,7 @@
 
 namespace ACFFieldOpenstreetmap\Settings;
 
+use ACFFieldOpenstreetmap\Compat;
 use ACFFieldOpenstreetmap\Core;
 use ACFFieldOpenstreetmap\Helper;
 
@@ -10,6 +11,7 @@ class SettingsOpenStreetMap extends Settings {
 	use Traits\UIElements;
 	use Traits\ProviderSettings;
 	use Traits\GeocoderSettings;
+	use Traits\ModernFieldsSettings;
 
 	private $optionset = 'acf_osm';
 
@@ -143,6 +145,9 @@ class SettingsOpenStreetMap extends Settings {
 				*/ ?>
 				<input class="screen-reader-text" id="acf-osm-tab-2" type="radio" name="acf_osm_view" checked />
 				<input class="screen-reader-text" id="acf-osm-tab-3" type="radio" name="acf_osm_view" />
+				<?php if ( Compat\ModernFields::is_active() ) { ?>
+					<input class="screen-reader-text" id="acf-osm-tab-4" type="radio" name="acf_osm_view" />
+				<?php } ?>
 				<h2 class="nav-tab-wrapper">
 					<?php /*
 					<label for="acf-osm-tab-1" class="nav-tab">
@@ -155,6 +160,11 @@ class SettingsOpenStreetMap extends Settings {
 					<label for="acf-osm-tab-3" type="button" class="nav-tab">
 						<?php esc_html_e('Geocoder', 'acf-openstreetmap-field') ?>
 					</label>
+					<?php if ( Compat\ModernFields::is_active() ) { ?>
+						<label for="acf-osm-tab-4" type="button" class="nav-tab">
+							<?php esc_html_e( 'Modern Fields', 'acf-openstreetmap-field' ); ?>
+						</label>
+					<?php } ?>
 				</h2>
 				<?php // Future
 				/*
@@ -205,6 +215,11 @@ class SettingsOpenStreetMap extends Settings {
 				<div class="tab-content acf-osm-tab-3">
 					<?php $this->print_geocoder_settings(); ?>
 				</div>
+				<?php if ( Compat\ModernFields::is_active() ) { ?>
+					<div class="tab-content acf-osm-tab-4">
+						<?php $this->print_modern_fields_settings(); ?>
+					</div>
+				<?php } ?>
 
 				<?php
 				submit_button( __('Save Settings' , 'acf-openstreetmap-field' ) );
@@ -237,6 +252,7 @@ class SettingsOpenStreetMap extends Settings {
 
 		$this->register_settings_providers();
 		$this->register_settings_geocoder();
+		$this->register_settings_modern_fields();
 
 	}
 

@@ -46,6 +46,7 @@
 			<property name="customEscapingFunctions" type="array">
 				<!-- acf escaping functions -->
 				<element value="acf_esc_attr"/>
+				<element value="acf_osm_esc_attrs"/>
 				<element value="get_the_*"/>
 			</property>
 		</properties>

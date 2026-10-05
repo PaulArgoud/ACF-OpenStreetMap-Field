@@ -23,7 +23,7 @@ $attr = [
 
 
 ?>
-<div <?php echo acf_esc_attr( $attr ) ?>></div>
+<div <?php echo acf_osm_esc_attrs( $attr ); ?>></div>
 <?php
 
 wp_enqueue_script( 'acf-osm-frontend' );

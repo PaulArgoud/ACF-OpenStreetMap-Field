@@ -11,6 +11,19 @@ namespace ACFFieldOpenstreetmap\Field;
  */
 class MapValue {
 
+	/** @var array Value of an empty field, also the whitelist of value keys */
+	const DEFAULT_VALUES = [
+		// hamburg
+		'lat'		=> 53.55064,
+		'lng'		=> 10.00065,
+		'zoom'		=> 12,
+		'layers'	=> [ 'OpenStreetMap.Mapnik' ],
+		'markers'	=> [],
+		// gm compatibility
+		'address'	=> '',
+		'version'	=> '',
+	];
+
 	/**
 	 *	Normalize a list of layer keys (drop empties/dupes, map legacy aliases).
 	 *

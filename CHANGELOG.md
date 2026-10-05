@@ -4,6 +4,16 @@ All notable changes to the [ACF OpenStreetMap Field](https://github.com/PaulArgo
 
 This project is a fork of [mcguffin/acf-openstreetmap-field](https://github.com/mcguffin/acf-openstreetmap-field). Issue and pull request links (`#…`) of versions up to 1.7.0 point to that original repository.
 
+## Unreleased
+ - Security: A marker label or address containing HTML written as entities (`&lt;img …&gt;`) was shown as HTML in the front-end map popup, so a user allowed to edit the field could run scripts in visitors' browsers. The map templates now encode the marker data so that it stays text. Theme overrides of `osm-maps/leaflet.php` must do the same: replace `acf_esc_attr()` with `acf_osm_esc_attrs()`.
+ - Feature: Modern Fields (1.5+) — its Map field can show a base layer of this plugin instead of the standard OpenStreetMap map, such as an IGN map, through the map proxy when it is enabled for the provider. Choose it under Settings › OpenStreetMap › Modern Fields.
+ - Feature: `acf_osm_the_map()` and `acf_osm_get_map()` show a location on the front end with the plugin's Leaflet map, layers and templates: a Modern Fields Map field (Modern Fields itself only links to a map), an ACF Google Map field or an OpenStreetMap field. They work without ACF.
+ - Fix: Clicking a marker without label no longer opens an empty popup.
+ - Fix: Settings › OpenStreetMap lost its styles (all tabs shown at once) when ACF is not active.
+ - Fix: The transparent layers BasemapAT overlay and NASAGIBS land surface temperature, snow cover, aerosol and chlorophyll are now overlays: alone, they left the map without background.
+ - Dev: The map templates escape their attributes with the new `acf_osm_esc_attrs()` instead of ACF's `acf_esc_attr()`, so they also work without ACF. Theme overrides calling `acf_esc_attr()` still work on ACF sites.
+ - Dev: `LeafletProviders::get_tile_layer()` returns a layer of the catalogue as a plain Leaflet URL template and options.
+
 ## 1.7.3
  - Security: In 1.7.1 – 1.7.2 the map proxy configuration, with every access token saved in the plugin's provider settings, could be downloaded by anyone: any change to these settings (or `wp acf-osm map-proxy configure`) wrote it to `wp-content/uploads/acf-osm-proxy-config.json` (multisite: also `wp-content/uploads/sites/<id>/…`), even with no provider proxied, and the proxy relayed every provider with a token. The configuration now lives in `wp-content/acf-osm-proxy-config.php`, a PHP file that stops when requested over HTTP, and only holds the proxied providers; when the site can reach itself, saving the settings first checks that such a file can't be downloaded. The public files are deleted on update. **If the site ran 1.7.1 or 1.7.2, renew every access token saved in these settings, even if you never enabled the proxy** — copies may remain in backups and caches. On Nginx, replace the rule suggested by 1.7.1 – 1.7.2 (`location ^~ /wp-content/maps/ { try_files … }`): it never ran the proxy and serves that directory as plain files. The settings page shows the new rule.
  - Security: The provider settings only accept access tokens (a site administrator could make the proxy fetch any URL), the proxy only fetches http(s) URLs and serves anything but images as a download, and a failing tile request no longer exposes the upstream URL with its access token in a PHP warning.

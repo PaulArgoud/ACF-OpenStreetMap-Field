@@ -271,8 +271,11 @@ import 'leaflet-gesture-handling'; // registers the optional `gestureHandling` m
 					L.latLng( bulletproofParseFloat( createEvt.detail.markerData.lat ), bulletproofParseFloat( createEvt.detail.markerData.lng ) ),
 					createEvt.detail.markerOptions
 				)
-				.bindPopup( createEvt.detail.markerOptions.label )
-				.addTo( map );
+			// no empty popup for a marker without label
+			if ( createEvt.detail.markerOptions.label ) {
+				marker.bindPopup( createEvt.detail.markerOptions.label )
+			}
+			marker.addTo( map );
 
 			this.dispatchEvent(new CustomEvent('acf-osm-map-marker-created',{
 				bubbles: true,
