@@ -45,7 +45,8 @@ Pick a tile provider, set the view, drop one or many markers — then output a r
 - 🎨 **Custom markers** — a no-code marker icon URL, plus full control through WordPress filters and JavaScript events.
 - 🇫🇷 **Géoplateforme (IGN)** — French address search (Base Adresse Nationale, no API key) and IGN layers: Plan IGN, aerial photos, historical maps, cadastral parcels and other overlays.
 - 🔒 **Map Proxy** — serve tiles from your own server to hide API keys and comply with privacy regulations such as the GDPR.
-- 🔌 **Integrations** — WPGraphQL, WPML, Polylang, the ACF REST API and Modern Fields.
+- 🧭 **Modern Fields** — give its Map field the plugin's layers (IGN maps, proxied providers), and show any location on the front end with `acf_osm_the_map()`, even without ACF.
+- 🔌 **Integrations** — WPGraphQL, WPML, Polylang and the ACF REST API.
 - 🧱 **Block editor, widgets & frontend forms** ready, with overridable theme templates.
 
 ## Screenshots
@@ -65,9 +66,10 @@ Pick a tile provider, set the view, drop one or many markers — then output a r
 ## Requirements
 - WordPress 5.5+
 - PHP 8.0 – 8.5
-- [Advanced Custom Fields](https://www.advancedcustomfields.com/) 5.7+ (or ACF PRO, or Secure Custom Fields)
+- [Advanced Custom Fields](https://www.advancedcustomfields.com/) 5.7+ (or ACF PRO, or Secure Custom Fields) for the map field
+- Optional: [Modern Fields](https://modern-fields.com) 1.5+ — the [Modern Fields integration](#modern-fields) doesn't need ACF
 
-Tested with WordPress 7.1.2, ACF PRO 6.8.10 and Leaflet 1.9.4.
+Tested with WordPress 7.1.2, ACF PRO 6.8.10, Modern Fields 1.5.0 and Leaflet 1.9.4.
 
 ## Installation
 
@@ -108,6 +110,8 @@ foreach ( $map['markers'] as $marker ) {
 }
 ```
 
+To show a location stored by another field — Modern Fields, ACF Google Map — with this plugin's map, see [`acf_osm_the_map()`](#modern-fields).
+
 More developer-centric documentation lives in the [wiki of the original project](https://github.com/mcguffin/acf-openstreetmap-field/wiki).
 
 ## Return formats
@@ -133,6 +137,9 @@ The *Geoportail France* tile provider adds the matching IGN maps from the [Géop
 
 ## Customization
 **Theme templates** — the map markup comes from templates you can override in your theme (`osm-maps/leaflet.php`, `osm-maps/osm.php`). An override must escape everything it prints: the field tells ACF that it escapes its own output. Escape attributes with `acf_osm_esc_attrs()`, not `acf_esc_attr()`: it keeps HTML entities in marker labels from turning into HTML, and works without ACF (see [Modern Fields](#modern-fields)).
+
+> [!IMPORTANT]
+> **Upgrading to 1.7.4:** a marker label written with HTML entities (`&lt;img …&gt;`) could run scripts in the front-end popup. The bundled templates are fixed. If your theme overrides `osm-maps/leaflet.php`, replace `acf_esc_attr()` with `acf_osm_esc_attrs()` in it.
 
 **Custom marker icon (PHP)** — return some HTML to render a `divIcon`:
 

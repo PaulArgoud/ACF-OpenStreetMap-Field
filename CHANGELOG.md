@@ -4,7 +4,7 @@ All notable changes to the [ACF OpenStreetMap Field](https://github.com/PaulArgo
 
 This project is a fork of [mcguffin/acf-openstreetmap-field](https://github.com/mcguffin/acf-openstreetmap-field). Issue and pull request links (`#…`) of versions up to 1.7.0 point to that original repository.
 
-## Unreleased
+## 1.7.4
  - Security: A marker label or address containing HTML written as entities (`&lt;img …&gt;`) was shown as HTML in the front-end map popup, so a user allowed to edit the field could run scripts in visitors' browsers. The map templates now encode the marker data so that it stays text. Theme overrides of `osm-maps/leaflet.php` must do the same: replace `acf_esc_attr()` with `acf_osm_esc_attrs()`.
  - Feature: Modern Fields (1.5+) — its Map field can show a base layer of this plugin instead of the standard OpenStreetMap map, such as an IGN map, through the map proxy when it is enabled for the provider. Choose it under Settings › OpenStreetMap › Modern Fields.
  - Feature: `acf_osm_the_map()` and `acf_osm_get_map()` show a location on the front end with the plugin's Leaflet map, layers and templates: a Modern Fields Map field (Modern Fields itself only links to a map), an ACF Google Map field or an OpenStreetMap field. They work without ACF.
