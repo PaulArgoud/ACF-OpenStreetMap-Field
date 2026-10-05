@@ -1,6 +1,6 @@
 {
   "name": "acf-openstreetmap-field",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "Configurable OpenStreetMap / Leaflet map field for ACF — markers, many tile providers, address geocoding and a privacy-friendly map proxy.",
   "private": true,
   "scripts": {

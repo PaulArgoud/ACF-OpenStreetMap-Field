@@ -1,9 +1,9 @@
 {
   "id": "https://github.com/PaulArgoud/ACF-OpenStreetMap-Field/raw/master/.wp-release-info.json",
   "slug": "acf-openstreetmap-field",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "url": "https://github.com/PaulArgoud/ACF-OpenStreetMap-Field",
-  "package": "https://github.com/PaulArgoud/ACF-OpenStreetMap-Field/releases/download/1.7.2/acf-openstreetmap-field.zip",
+  "package": "https://github.com/PaulArgoud/ACF-OpenStreetMap-Field/releases/download/1.7.3/acf-openstreetmap-field.zip",
   "tested": "7.1",
   "requires_php": "8.0"
 }

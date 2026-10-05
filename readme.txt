@@ -5,7 +5,7 @@ Tags: map acf openstreetmap leaflet
 Requires at least: 5.5
 Requires PHP: 8.0
 Tested up to: 7.1
-Stable tag: 1.7.2
+Stable tag: 1.7.3
 License: GPLv3 or later
 License URI: http://www.gnu.org/licenses/gpl-3.0.html
 
@@ -151,6 +151,9 @@ No.
 4. Settings page. Configure API access keys and disable specific tile layers.
 
 == Upgrade Notice ==
+
+= 1.7.3 =
+Security: if the site ran 1.7.1 or 1.7.2, renew every access token saved in the plugin settings, even without the map proxy. On Nginx, replace the old map proxy rule (see FAQ).
 
 = 1.7.1 =
 If you use the map proxy, its configuration is migrated automatically from a generated PHP file to JSON on upgrade — no action required.
